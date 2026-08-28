@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 var DEGREE_OPTIONS = [['', '请选择'], ['大专', '大专'], ['本科', '本科'], ['硕士', '硕士'], ['博士', '博士'], ['其他', '其他']];
 var GENDER_OPTIONS = [['', '不填'], ['男', '男'], ['女', '女']];
 
@@ -263,8 +263,8 @@ function renderOpen(d, opts){
       if (e.description) li += nl2li(e.description);
       side += '<div class="op-edu-item">' +
         '<div class="op-edu-school">' + esc(e.school || '') + '</div>' +
-        '<div class="op-edu-line"><span class="op-edu-date">' + esc(tplDateRange(e.start, e.end)) + '</span>' +
-        '<span class="op-edu-major">' + esc(e.major || '') + '</span></div>' +
+        '<div class="op-edu-date">' + esc(tplDateRange(e.start, e.end)) + '</div>' +
+        '<div class="op-edu-major">' + esc(e.major || '') + '</div>' +
         (li ? '<ul class="op-edu-list">' + li + '</ul>' : '') +
         '</div>';
     });

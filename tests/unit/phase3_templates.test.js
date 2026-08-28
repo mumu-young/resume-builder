@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 const { test, runAll } = require('../lib/suite');
 const { ok, eq } = require('../lib/assert');
 const { loadScripts } = require('../lib/load-js');
@@ -293,19 +293,34 @@ test('templates.css：标题背景浅色头部样式与标题背景色一致', (
   ok(tplCss.indexOf('.tpl-titlebg .tpl-header, .tpl-titlebglight .tpl-header{') >= 0, '标题背景浅色应复用头部样式规则');
   ok(tplCss.indexOf('.tpl-titlebg .tb-head-right, .tpl-titlebglight .tb-head-right{') >= 0, '标题背景浅色应复用联系方式网格规则');
 });
-test('开放两栏教育经历按参考排版（学校加粗、时间左专业右、描述列表）', () => {
+test('开放两栏教育经历按参考排版（学校加粗、时间与专业分两行、描述列表）', () => {
   const html = ctx.getTemplate('open').render(d);
   ok(html.indexOf('op-edu-item') >= 0, '缺少教育经历条目容器');
   ok(html.indexOf('<div class="op-edu-school">复旦大学</div>') >= 0, '学校应单独放大加粗');
-  ok(html.indexOf('op-edu-date">2018.09 - 2022.06</span>') >= 0, '时间应在同一行左侧');
-  ok(html.indexOf('<span class="op-edu-major">计算机</span>') >= 0, '专业应在同一行右侧');
-  ok(html.indexOf('op-edu-school">复旦大学</div>') < html.indexOf('op-edu-date'), '学校应在时间/专业上方');
+  ok(html.indexOf('<div class="op-edu-date">2018.09 - 2022.06</div>') >= 0, '时间应单独一行');
+  ok(html.indexOf('<div class="op-edu-major">计算机</div>') >= 0, '专业应单独一行');
+  ok(html.indexOf('op-edu-school">复旦大学</div>') < html.indexOf('op-edu-date'), '学校应在时间上方');
+  ok(html.indexOf('op-edu-date">2018.09 - 2022.06</div>') < html.indexOf('op-edu-major">计算机</div>'), '时间应在专业上方（两行排列）');
+  ok(html.indexOf('op-edu-line') === -1, '不应再使用同一行容器 op-edu-line');
   ok(html.indexOf('复旦大学 | 计算机') === -1, '学校与专业间不应有分隔符');
   ok(html.indexOf('op-edu-list') >= 0, '缺少描述列表');
   ok(html.indexOf('相关课程：数据结构、操作系统') >= 0, '缺少相关课程行');
   ok(html.indexOf('<li>参与ACM竞赛</li>') >= 0, '缺少经历描述行');
   const schoolCss = tplCss.match(/\.tpl-open-side \.op-edu-school\{([^}]*)\}/);
   ok(schoolCss && /font-weight:700/.test(schoolCss[1]) && /font-size:calc\(var\(--tpl-fs, 14px\) \+ 2px\)/.test(schoolCss[1]), '学校应加粗且字号较大');
+});
+test('开放两栏：教育经历时间与专业分两行排列（独立行 + 样式）', () => {
+  const html = ctx.getTemplate('open').render(d);
+  const dateHtml = '<div class="op-edu-date">2018.09 - 2022.06</div>';
+  const majorHtml = '<div class="op-edu-major">计算机</div>';
+  ok(html.indexOf(dateHtml) >= 0, '时间应是独立 div 行');
+  ok(html.indexOf(majorHtml) >= 0, '专业应是独立 div 行');
+  ok(html.indexOf(dateHtml) < html.indexOf(majorHtml), '时间行应在专业行之前');
+  ok(html.indexOf('op-edu-line') === -1, '不应存在 op-edu-line 同一行容器');
+  const dateCss = tplCss.match(/\.tpl-open-side \.op-edu-date\{([^}]*)\}/);
+  ok(dateCss && dateCss[1].indexOf('display:flex') === -1, '时间不应再使用 flex 同行布局');
+  const majorCss = tplCss.match(/\.tpl-open-side \.op-edu-major\{([^}]*)\}/);
+  ok(majorCss && majorCss[1].indexOf('display:flex') === -1, '专业不应再使用 flex 同行布局');
 });
 test('TEMPLATES 顺序：经典模板/开放两栏/标题背景色/标题背景浅色在前', () => {
   const ids = ctx.TEMPLATES.map(function(t){ return t.id; });

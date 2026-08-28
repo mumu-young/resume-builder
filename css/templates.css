@@ -1,4 +1,4 @@
-/* ===== 简历 A4 页面基准 ===== */
+﻿/* ===== 简历 A4 页面基准 ===== */
 .resume-page{
   font-family:"Microsoft YaHei","PingFang SC","Helvetica Neue",Arial,sans-serif;
   font-size:var(--tpl-fs, 14px);
@@ -131,8 +131,8 @@
 .tpl-open-side ul{ color:rgba(255,255,255,.9); }
 .tpl-open-side .op-edu-item{ margin:8px 0 14px; }
 .tpl-open-side .op-edu-school{ font-weight:700; color:#fff; font-size:calc(var(--tpl-fs, 14px) + 2px); }
-.tpl-open-side .op-edu-line{ display:flex; justify-content:space-between; gap:8px; margin:2px 0 4px; font-size:calc(var(--tpl-fs, 14px) - 1px); color:rgba(255,255,255,.9); }
-.tpl-open-side .op-edu-date{ white-space:nowrap; }
+.tpl-open-side .op-edu-date{ font-size:calc(var(--tpl-fs, 14px) - 1px); color:rgba(255,255,255,.85); margin:2px 0 0; }
+.tpl-open-side .op-edu-major{ font-size:calc(var(--tpl-fs, 14px) - 1px); color:rgba(255,255,255,.9); margin:1px 0 4px; }
 .tpl-open-side .op-edu-list{ color:rgba(255,255,255,.9); }
 .tpl-open-main{ background:#fff; padding:22px 24px; }
 .tpl-open .tpl-summary{ color:#444; margin:0 0 6px; }

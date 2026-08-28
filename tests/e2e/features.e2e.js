@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 const path = require('path');
 const { launchBrowser } = require('../lib/browser');
 const { test, runAll } = require('../lib/suite');
@@ -641,12 +641,18 @@ const { test, runAll } = require('../lib/suite');
         const date = item.querySelector('.op-edu-date');
         const major = item.querySelector('.op-edu-major');
         const list = item.querySelector('.op-edu-list');
+        let separate = false;
+        if (date && major){
+          separate = date !== major && !(date.contains(major) || major.contains(date)) &&
+            date.compareDocumentPosition(major) === Node.DOCUMENT_POSITION_FOLLOWING;
+        }
         return {
           schoolText: school ? school.textContent : null,
           schoolWeight: school ? getComputedStyle(school).fontWeight : null,
           dateText: date ? date.textContent : null,
           majorText: major ? major.textContent : null,
-          sameLine: !!line && line.contains(date) && line.contains(major),
+          hasLine: !!line,
+          separate: separate,
           listText: list ? list.textContent : null
         };
       })()`);
@@ -654,7 +660,8 @@ const { test, runAll } = require('../lib/suite');
       if (v.schoolText !== '北京大学') throw new Error('学校错误: ' + v.schoolText);
       if (v.schoolWeight !== '700' && v.schoolWeight !== 'bold') throw new Error('学校应加粗: ' + v.schoolWeight);
       if (v.dateText !== '2013.09 - 2017.06' || v.majorText !== '计算机科学与技术') throw new Error('时间/专业错误: ' + JSON.stringify(v));
-      if (!v.sameLine) throw new Error('时间与专业应在同一行');
+      if (v.hasLine) throw new Error('不应再存在 op-edu-line 同一行容器');
+      if (!v.separate) throw new Error('时间与专业应分两行排列');
       if (!v.listText || v.listText.indexOf('主修课程') < 0) throw new Error('缺少描述列表: ' + v.listText);
     });
     test('问题36 导出页增加一页提醒', async () => {
