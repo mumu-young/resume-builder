@@ -220,7 +220,7 @@
       field('结束时间', inputEl(p('end'), e.end, 'month')) +
       field('绩点 / GPA', inputEl(p('gpa'), e.gpa, 'text', '如：3.8/4.0')) +
       field('排名', inputEl(p('rank'), e.rank, 'text', '如：前 10%')) +
-      field('相关课程', inputEl(p('courses'), e.courses, 'text', '如：数据结构、操作系统')) +
+      field('相关课程', taWrap(p('courses'), e.courses, 3, '每行写一门课程，如：数据结构、操作系统'), 'span2') +
       field('描述 / 在校经历', taWrap(p('description'), e.description, 3, '可写在校活动、论文、成果等'), 'span2') +
       '</div>';
   }

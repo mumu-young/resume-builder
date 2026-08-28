@@ -46,13 +46,18 @@ function templateStyle(opts){
   return ' style="--tpl-title-color:' + (opts.titleColor || DEFAULT_TITLE_COLOR) + ';--tpl-line-color:' + (opts.lineColor || DEFAULT_LINE_COLOR) + '"';
 }
 
+function tplCoursesLi(courses){
+  var lines = String(courses || '').split(/\r?\n/).map(function(s){ return s.trim(); }).filter(Boolean);
+  if (!lines.length) return '';
+  return '<li>相关课程：' + esc(lines.join('、')) + '</li>';
+}
 function secEducationHTML(d, title, headFn){
   if (!d.education.length) return '';
   var items = d.education.map(function(e){
     var line1 = [e.school, e.major].filter(Boolean).join(' | ');
     var line2 = [e.degree, e.gpa ? ('GPA ' + e.gpa) : '', e.rank ? ('排名 ' + e.rank) : ''].filter(Boolean).join(' | ');
     var li = '';
-    if (e.courses) li += '<li>相关课程：' + esc(e.courses) + '</li>';
+    if (e.courses) li += tplCoursesLi(e.courses);
     if (e.description) li += nl2li(e.description);
     return '<div class="tpl-item"><div class="tpl-item-head">' +
       '<span class="tpl-item-title">' + esc(line1 || '教育经历') + '</span>' +
@@ -261,7 +266,7 @@ function renderOpen(d, opts){
     side += openSideHead(DEFAULT_SECTION_TITLES.education);
     d.education.forEach(function(e){
       var li = '';
-      if (e.courses) li += '<li>相关课程：' + esc(e.courses) + '</li>';
+      if (e.courses) li += tplCoursesLi(e.courses);
       if (e.description) li += nl2li(e.description);
       side += '<div class="op-edu-item">' +
         '<div class="op-edu-school">' + esc(e.school || '') + '</div>' +

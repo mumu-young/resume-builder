@@ -357,4 +357,15 @@ test('基础信息 summary 不再渲染，个人简介以分节展示', () => {
   ok(html.indexOf('tpl-summary') === -1, '不应再出现 tpl-summary 元素');
   ok(html.indexOf('2年经验，擅长Vue。') >= 0, 'profile 内容应以分节渲染');
 });
+test('tplCoursesLi 将多行课程合并为顿号单行', () => {
+  eq(ctx.tplCoursesLi('A\nB\nC'), '<li>相关课程：A、B、C</li>');
+  eq(ctx.tplCoursesLi(''), '');
+  eq(ctx.tplCoursesLi('   '), '');
+});
+test('教育经历相关课程多行输入以顿号合并展示', () => {
+  const dd = JSON.parse(JSON.stringify(d));
+  dd.education[0].courses = '数据结构\n操作系统\n计算机网络';
+  const html = ctx.renderClean(dd);
+  ok(html.indexOf('相关课程：数据结构、操作系统、计算机网络') >= 0, '多行课程应合并为顿号一行展示');
+});
 runAll();

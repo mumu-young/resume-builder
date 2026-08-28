@@ -87,7 +87,10 @@ function docxSectionItems(r, id, opts){
       var date = tplDateRange(e.start, e.end);
       if (date) runs.push({ text: '    ' + date, color: '#666666' });
       if (runs.length) xml += docxPara(runs, { after: 60 });
-      if (e.courses) xml += docxPara([{ text: '相关课程：' + e.courses, size: 20 }], { after: 40 });
+      if (e.courses) {
+        var courseLines = String(e.courses).split(/\r?\n/).map(function(s){ return s.trim(); }).filter(Boolean);
+        if (courseLines.length) xml += docxPara([{ text: '相关课程：' + courseLines.join('、'), size: 20 }], { after: 40 });
+      }
       docxLines(e.description).forEach(function(l){ xml += docxPara([{ text: l, size: 20 }], { after: 40 }); });
     });
   } else if (id === 'work'){

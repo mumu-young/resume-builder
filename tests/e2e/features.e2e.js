@@ -745,6 +745,20 @@ const { test, runAll } = require('../lib/suite');
       if (saved !== '自我评价') throw new Error('个人简介小标题数据未保存: ' + saved);
     });
 
+    test('问题41 教育经历相关课程改为多行输入框并实时预览', async () => {
+      await ev('__APP__.resetAllData()', true);
+      await goModule('education');
+      await click('[data-action="add-entry"][data-type="education"]');
+      const isTa = await ev('!!document.querySelector("textarea[data-path=\\"education.0.courses\\"]") && !document.querySelector("input[data-path=\\"education.0.courses\\"]")');
+      if (!isTa) throw new Error('相关课程应为多行 textarea');
+      const rows = await ev('document.querySelector("textarea[data-path=\\"education.0.courses\\"]").rows');
+      if (rows < 3) throw new Error('相关课程输入框行数过小: ' + rows);
+      await setInput('textarea[data-path="education.0.courses"]', '数据结构\n操作系统\n计算机网络');
+      await sleep(300);
+      const html = await ev('document.getElementById("resume-page").innerHTML');
+      if (html.indexOf('相关课程：数据结构、操作系统、计算机网络') < 0) throw new Error('预览未将多行课程合并展示');
+    });
+
     await runAll();
   } finally {
     await b.close();
