@@ -1,0 +1,30 @@
+# 操作系统
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# 编辑器 / IDE
+.idea/
+.vscode/
+*.code-workspace
+*.swp
+*.swo
+*~
+
+# 临时 / 日志
+*.tmp
+*.bak
+*.log
+~$*
+
+# 用户导出的成品与备份（含个人隐私，避免误提交）
+*.docx
+*.pdf
+备份_*.json
+简历备份_*.json
+
+# 依赖 / 构建（如将来引入）
+node_modules/
+dist/
+build/

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>简历工坊</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/templates.css">
+</head>
+<body>
+<div id="loading" class="loading">正在加载本地数据…</div>
+
+<div id="app" class="app hidden">
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="logo">📄 简历工坊</span>
+      <span class="divider"></span>
+      <span id="resume-title" class="resume-title"></span>
+      <select id="resume-select" class="resume-select" title="切换简历"></select>
+    </div>
+    <div class="topbar-right">
+      <span id="wc-badge" class="wc-badge" title="当前简历总字数"></span>
+      <span id="save-status" class="save-status"></span>
+      <button id="btn-new" class="btn btn-ghost" data-action="new-resume">＋ 新建</button>
+      <button id="btn-dup" class="btn btn-ghost" data-action="dup-resume">复制</button>
+      <button id="btn-rename" class="btn btn-ghost" data-action="rename-resume">重命名</button>
+      <button id="btn-del" class="btn btn-ghost danger" data-action="del-resume">删除</button>
+      <button id="btn-toggle-preview" class="btn btn-ghost" data-action="toggle-preview">隐藏预览</button>
+      <button id="btn-print" class="btn btn-primary" data-action="export-pdf">🖨️ 导出 PDF</button>
+      <button id="btn-settings" class="btn btn-ghost" data-action="set-module" data-id="settings">⚙️ 设置</button>
+    </div>
+  </header>
+
+  <div class="app-body">
+    <aside class="sidebar">
+      <div class="sidebar-label">功能模块</div>
+      <nav id="module-nav" class="module-nav"></nav>
+      <div class="sidebar-footer">
+        <label class="switch" title="实时预览开关">
+          <input type="checkbox" id="preview-switch" checked>
+          <span class="switch-slider"></span>
+          <span class="switch-text">实时预览</span>
+        </label>
+      </div>
+    </aside>
+
+    <main id="editor" class="editor-pane"></main>
+
+    <aside id="preview-pane" class="preview-pane">
+      <div class="preview-toolbar">
+        <span>👁️ 实时预览（修改后自动更新）</span>
+      </div>
+      <div id="preview-scroll" class="preview-scroll">
+        <div id="resume-page" class="resume-page"></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<input type="file" id="import-file" accept=".json,application/json" hidden>
+<input type="file" id="photo-file" accept="image/*" hidden>
+<div id="toast" class="toast"></div>
+
+<script src="js/utils.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/templates.js"></script>
+<script src="js/docx.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
