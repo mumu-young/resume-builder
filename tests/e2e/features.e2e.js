@@ -567,7 +567,7 @@ const { test, runAll } = require('../lib/suite');
         const A = __APP__;
         const b = A.data().basic;
         b.name='张三'; b.target='前端开发工程师'; b.age='25'; b.phone='13800000000'; b.email='a@b.com'; b.location='北京'; b.years='3 年';
-        b.summary='3 年前端开发经验，擅长 Vue/React，负责过多个中大型项目，具备良好的沟通与团队协作能力。';
+        A.data().profile='3 年前端开发经验，擅长 Vue/React，负责过多个中大型项目，具备良好的沟通与团队协作能力。';
         b.photo='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
         for (let i=0;i<2;i++){ A.addEntry('education'); A.addEntry('work'); A.addEntry('projects'); }
         A.setByPath('education.0.school','复旦大学'); A.setByPath('education.0.major','计算机'); A.setByPath('education.0.start','2018-09'); A.setByPath('education.0.end','2022-06');
@@ -712,6 +712,39 @@ const { test, runAll } = require('../lib/suite');
       const toast = await ev('document.getElementById("toast").textContent');
       if (toast.indexOf('Word 文档已导出') < 0) throw new Error('点击导出 Word 后未出现提示: ' + toast);
     });
+    test('问题40 个人简介/自我评价独立模块：编辑、预览分节、排序与小标题', async () => {
+      await ev('__APP__.resetAllData()', true);
+      await goModule('honors');
+      await click('[data-action="add-entry"][data-type="honor"]');
+      await setInput('input[data-path="honors.items.0.title"]', '国家奖学金');
+      await goModule('profile');
+      const hasTa = await ev('!!document.querySelector("textarea[data-path=\\"profile\\"]")');
+      if (!hasTa) throw new Error('个人简介模块缺少输入框');
+      await setInput('textarea[data-path="profile"]', '3 年前端经验，擅长 Vue/React');
+      await sleep(300);
+      let html = await ev('document.getElementById("resume-page").innerHTML');
+      if (html.indexOf('个人简介 / 自我评价') < 0) throw new Error('预览缺少个人简介分节');
+      if (html.indexOf('3 年前端经验') < 0) throw new Error('预览缺少个人简介内容');
+      if (html.indexOf('荣誉证书') >= html.indexOf('个人简介 / 自我评价')) throw new Error('个人简介应默认在荣誉证书之后');
+      await goModule('sections');
+      const hasRow = await ev('Array.prototype.some.call(document.querySelectorAll(".sec-order-row"), function(r){ return r.textContent.indexOf("个人简介") >= 0; })');
+      if (!hasRow) throw new Error('模块排序中缺少个人简介');
+      const idx = await ev('Array.prototype.findIndex.call(document.querySelectorAll(".sec-order-row"), function(r){ return r.textContent.indexOf("个人简介") >= 0; })');
+      for (let i = idx; i > 0; i--){
+        await click('[data-action="move-section"][data-idx="' + i + '"][data-dir="-1"]');
+      }
+      await sleep(300);
+      html = await ev('document.getElementById("resume-page").innerHTML');
+      if (html.indexOf('个人简介 / 自我评价') > html.indexOf('荣誉证书')) throw new Error('移动后个人简介应排在最前');
+      await setInput('input[data-stitle="profile"]', '自我评价');
+      await sleep(300);
+      html = await ev('document.getElementById("resume-page").innerHTML');
+      if (html.indexOf('自我评价') < 0) throw new Error('个人简介自定义小标题未生效');
+      if (html.indexOf('个人简介 / 自我评价') >= 0) throw new Error('个人简介默认标题应被替换');
+      const saved = await ev('__APP__.getCurrent().sectionTitles.profile');
+      if (saved !== '自我评价') throw new Error('个人简介小标题数据未保存: ' + saved);
+    });
+
     await runAll();
   } finally {
     await b.close();

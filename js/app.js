@@ -12,6 +12,7 @@
     { id: 'projects', icon: '🚀', name: '项目经验' },
     { id: 'skills', icon: '🛠️', name: '专业技能' },
     { id: 'honors', icon: '🏅', name: '荣誉证书 & 附加信息' },
+    { id: 'profile', icon: '📝', name: '个人简介 / 自我评价' },
     { id: 'sections', icon: '🗂️', name: '模块排序' },
     { id: 'templates', icon: '🎨', name: '模板中心' },
     { id: 'margins', icon: '📐', name: '页面边距' },
@@ -36,7 +37,8 @@
     return {
       basic: { name: '', phone: '', email: '', location: '', target: '', years: '', age: '', summary: '', photo: '', photoShape: 'rect', contactSeparator: '|', targetLabel: true, showLabels: { age: true, phone: true, email: true, location: true, years: true } },
       education: [], work: [], projects: [], skills: [],
-      honors: { items: [], extra: '' }
+      honors: { items: [], extra: '' },
+      profile: ''
     };
   }
   function newResume(title){
@@ -64,9 +66,15 @@
     var h = r.data.honors = r.data.honors || {};
     if (!Array.isArray(h.items)) h.items = [];
     if (h.extra === undefined) h.extra = '';
+    if (r.data.profile === undefined){ r.data.profile = b.summary || ''; b.summary = ''; }
+    if (typeof r.data.profile !== 'string') r.data.profile = String(r.data.profile == null ? '' : r.data.profile);
     if (!r.templateId) r.templateId = 'bizblue';
     if (r.updatedAt === undefined) r.updatedAt = Date.now();
     if (!Array.isArray(r.sectionOrder) || !r.sectionOrder.length) r.sectionOrder = DEFAULT_SECTION_ORDER.slice();
+    if (r.sectionOrder.indexOf('profile') < 0){
+      var _pi = r.sectionOrder.indexOf('honors');
+      r.sectionOrder.splice(_pi >= 0 ? _pi + 1 : r.sectionOrder.length, 0, 'profile');
+    }
     r.sectionTitles = Object.assign({}, DEFAULT_SECTION_TITLES, r.sectionTitles || {});
     r.style = Object.assign({}, { titleColor: DEFAULT_TITLE_COLOR, lineColor: DEFAULT_LINE_COLOR }, r.style || {});
     if (!r.style.pagePadding || typeof r.style.pagePadding !== 'object') r.style.pagePadding = {};
@@ -181,7 +189,7 @@
     var photoHtml = b.photo
       ? '<div class="photo-box"><img src="' + b.photo + '" alt="照片"><button type="button" class="btn btn-ghost" data-action="photo-remove">移除照片</button></div>'
       : '<div class="photo-box empty"><button type="button" class="btn" data-action="pick-photo">上传照片（可选）</button><p class="muted">照片只保存在本地，不会上传</p></div>';
-    return '<div class="module-head"><div><h3>基础信息</h3><p class="module-desc">这部分会固定显示在简历头部。</p></div></div>' +
+    return '<div class="module-head"><div><h3>基础信息</h3><p class="module-desc">这部分会固定显示在简历头部；「个人简介 / 自我评价」已独立为单独模块。</p></div></div>' +
       '<div class="form-grid">' +
       field('姓名 *', inputEl('basic.name', b.name, 'text', '你的姓名')) +
       field('电话', inputEl('basic.phone', b.phone, 'text', '手机号') + '<div class="chk-row">' + labelChk('basic.showLabels.phone', '显示标签', labels.phone) + '</div>') +
@@ -193,7 +201,13 @@
       field('照片', photoHtml, 'span2') +
       field('照片形状', selectEl('data-path="basic.photoShape"', b.photoShape, [['rect', '矩形 7:9（默认）'], ['round', '圆形']])) +
       field('联系信息分隔符', selectEl('data-path="basic.contactSeparator"', b.contactSeparator, [['|', '竖线 |'], ['·', '圆点 ·'], [' ', '空白']])) +
-      field('个人简介 / 自我评价', taWrap('basic.summary', b.summary, 4, '用 1-3 句话概括你的优势，例如：X 年经验、擅长 XX、成果 YY'), 'span2') +
+      '</div>';
+  }
+  function renderProfileEditor(){
+    var d = data();
+    return '<div class="module-head"><div><h3>个人简介 / 自我评价</h3><p class="module-desc">用 1-3 句话概括你的优势与求职亮点，将作为独立模块展示在简历中。</p></div></div>' +
+      '<div class="form-grid">' +
+      field('个人简介 / 自我评价', taWrap('profile', d.profile, 6, '用 1-3 句话概括你的优势，例如：X 年经验、擅长 XX、成果 YY'), 'span2') +
       '</div>';
   }
   function fieldsEducation(e, idx){
@@ -330,7 +344,7 @@
   }
   function renderToolsModule(){
     var stats = resumeStats();
-    var secNames = { basic: '基础信息', education: '教育经历', work: '实习/工作', projects: '项目经验', skills: '专业技能', honors: '荣誉/其他' };
+    var secNames = { basic: '基础信息', education: '教育经历', work: '实习/工作', projects: '项目经验', skills: '专业技能', honors: '荣誉/其他', profile: '个人简介' };
     var rows = Object.keys(stats.sections).map(function(k){
       return '<div class="wc-row" data-sec="' + k + '"><span>' + secNames[k] + '</span><span class="wc-num" data-sec="' + k + '">' + stats.sections[k] + '</span></div>';
     }).join('');
@@ -362,6 +376,7 @@
     { id: 'projects', name: '项目经验' },
     { id: 'skills', name: '专业技能' },
     { id: 'honors', name: '荣誉证书' },
+    { id: 'profile', name: '个人简介 / 自我评价' },
     { id: 'extra', name: '其他信息' }
   ];
   var TITLE_COLORS = ['#000000', '#1f2937', '#475569', '#2563eb', '#16a34a', '#ea580c', '#9333ea', '#dc2626', '#0d9488', '#ca8a04'];
@@ -391,7 +406,7 @@
       return field(m.name + ' 小标题',
         '<input type="text" data-stitle="' + m.id + '" value="' + esc(r.sectionTitles[m.id]) + '" placeholder="' + esc(DEFAULT_SECTION_TITLES[m.id]) + '">');
     }).join('');
-    return '<div class="module-head"><div><h3>模块排序</h3><p class="module-desc">调整五大模块在简历中的排列顺序，编辑小标题内容，并选择小标题与分割线颜色（低饱和度配色）。</p></div></div>' +
+    return '<div class="module-head"><div><h3>模块排序</h3><p class="module-desc">调整各模块在简历中的排列顺序，编辑小标题内容，并选择小标题与分割线颜色（低饱和度配色）。</p></div></div>' +
       '<div class="tool-card"><h4>🗂️ 模块排列顺序</h4>' + orderRows +
       '<button class="btn btn-mini" data-action="reset-section-style">↺ 恢复默认顺序与颜色</button></div>' +
       '<div class="tool-card"><h4>✏️ 小标题内容</h4><div class="form-grid">' + titleInputs + '</div>' +
@@ -457,6 +472,7 @@
       case 'projects': html = renderListEditor('projects'); break;
       case 'skills': html = renderListEditor('skills'); break;
       case 'honors': html = renderHonorsEditor(); break;
+      case 'profile': html = renderProfileEditor(); break;
       case 'sections': html = renderSectionsModule(); break;
       case 'templates': html = renderTemplatesModule(); break;
       case 'margins': html = renderMarginsModule(); break;
@@ -494,10 +510,10 @@
   }
   function resumeStats(){
     var d = data();
-    var empty = { sections: { basic: 0, education: 0, work: 0, projects: 0, skills: 0, honors: 0 }, total: 0, noSpace: 0 };
+    var empty = { sections: { basic: 0, education: 0, work: 0, projects: 0, skills: 0, honors: 0, profile: 0 }, total: 0, noSpace: 0 };
     if (!d) return empty;
-    var sec = { basic: 0, education: 0, work: 0, projects: 0, skills: 0, honors: 0 };
-    var no = { basic: 0, education: 0, work: 0, projects: 0, skills: 0, honors: 0 };
+    var sec = { basic: 0, education: 0, work: 0, projects: 0, skills: 0, honors: 0, profile: 0 };
+    var no = { basic: 0, education: 0, work: 0, projects: 0, skills: 0, honors: 0, profile: 0 };
     function add(name, arr){
       arr.forEach(function(v){
         var st = textStats(v);
@@ -506,7 +522,8 @@
       });
     }
     var b = d.basic;
-    add('basic', [b.name, b.phone, b.email, b.location, b.target, b.years, b.age, b.summary]);
+    add('basic', [b.name, b.phone, b.email, b.location, b.target, b.years, b.age]);
+    add('profile', [d.profile]);
     d.education.forEach(function(e){ add('education', [e.school, e.degree, e.major, e.start, e.end, e.gpa, e.rank, e.courses, e.description]); });
     d.work.forEach(function(w){ add('work', [w.company, w.position, w.start, w.end, w.description]); });
     d.projects.forEach(function(p){ add('projects', [p.name, p.role, p.start, p.end, p.tech, p.link, p.description]); });

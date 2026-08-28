@@ -6,16 +6,17 @@ const { loadScripts } = require('../lib/load-js');
 function sampleResume(){
   return {
     id: 'r1', title: '张三的简历', templateId: 'bizblue',
-    sectionOrder: ['education', 'work', 'projects', 'skills', 'honors'],
+    sectionOrder: ['education', 'work', 'projects', 'skills', 'honors', 'profile'],
     sectionTitles: { education: '教育经历', work: '实习 / 工作经历', projects: '项目经验', skills: '专业技能', honors: '荣誉证书', extra: '其他信息' },
     style: { titleColor: '#2F5496', lineColor: '#c3ccd6', lineWidth: 2, showLines: true, pagePadding: { top: 10, right: 12, bottom: 10, left: 12 } },
     data: {
-      basic: { name: '张三', target: '前端开发工程师', phone: '13800000000', email: 'a@b.com', location: '北京', age: '25', years: '3 年', summary: '3 年前端经验', contactSeparator: '|', targetLabel: true, showLabels: { age: true, phone: true, email: true, location: true, years: true } },
+      basic: { name: '张三', target: '前端开发工程师', phone: '13800000000', email: 'a@b.com', location: '北京', age: '25', years: '3 年', contactSeparator: '|', targetLabel: true, showLabels: { age: true, phone: true, email: true, location: true, years: true } },
       education: [{ school: '复旦大学', major: '计算机', start: '2018-09', end: '2022-06', courses: '数据结构', description: '参与竞赛' }],
       work: [{ company: '字节跳动', position: '前端开发', start: '2022-07', end: '至今', description: '负责中台开发' }],
       projects: [{ name: '中台系统', role: '负责人', tech: 'Vue', link: '', start: '2023-01', end: '2023-06', description: '从0搭建' }],
       skills: [{ category: '编程语言', items: 'JavaScript\nTypeScript' }],
-      honors: { items: [{ title: '奖学金', year: '2022', description: '' }], extra: '英语 CET-6' }
+      honors: { items: [{ title: '奖学金', year: '2022', description: '' }], extra: '英语 CET-6' },
+      profile: '3 年前端经验'
     }
   };
 }
@@ -46,6 +47,8 @@ test('docx 内容包含姓名/分节/学校/公司/A4 与边距', () => {
   ok(text.indexOf('字节跳动') >= 0, '缺少公司');
   ok(text.indexOf('中台系统') >= 0, '缺少项目');
   ok(text.indexOf('JavaScript') >= 0, '缺少技能');
+  ok(text.indexOf('个人简介 / 自我评价') >= 0, '缺少个人简介分节标题');
+  ok(text.indexOf('3 年前端经验') >= 0, '缺少个人简介内容');
   ok(text.indexOf('w:pgSz w:w="11906" w:h="16838"') >= 0, '缺少 A4 页面');
   ok(text.indexOf('w:pgMar w:top="567" w:right="680" w:bottom="567" w:left="680"') >= 0, '边距换算错误');
 });

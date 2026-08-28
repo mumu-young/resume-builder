@@ -25,6 +25,7 @@
 .tpl-summary{ margin:6px 0 0; color:#333; }
 .tpl-target{ margin-top:2px; }
 .tpl-extra{ white-space:pre-wrap; margin:4px 0; }
+.tpl-profile{ white-space:pre-wrap; margin:4px 0; color:#333; }
 
 /* ===== 简洁单栏 ===== */
 .tpl-clean{ --tpl-accent:#1f3a5f; }

@@ -133,6 +133,9 @@ function docxSectionItems(r, id, opts){
       if (runs.length) xml += docxPara(runs, { after: 60 });
     });
     if (d.honors.extra && d.honors.extra.trim()) xml += docxPara([{ text: d.honors.extra, size: 20 }], { after: 60 });
+  } else if (id === 'profile'){
+    xml += docxSectionHead(r, id, opts);
+    if (d.profile && String(d.profile).trim()) xml += docxPara([{ text: d.profile, size: 21 }], { after: 60 });
   }
   return xml;
 }
@@ -149,7 +152,6 @@ function buildDocxOneCol(r, photo){
   if (b.target) xml += docxPara([{ text: tplTargetLine(b), size: 22, color: '#444444' }], headerOpts);
   var contact = docxContactLine(b);
   if (contact) xml += docxPara([{ text: contact, size: 19, color: '#444444' }], headerOpts);
-  if (b.summary) xml += docxPara([{ text: b.summary, size: 21 }], { after: 80 });
   (r.sectionOrder || DEFAULT_SECTION_ORDER).forEach(function(id){
     xml += docxSectionItems(r, id, { before: 160, after: 80 });
   });
@@ -185,7 +187,6 @@ function buildDocxTwoCol(r, photo){
     });
   }
   var right = '';
-  if (b.summary) right += docxPara([{ text: b.summary, size: 20 }], { after: 60 });
   (r.sectionOrder || DEFAULT_SECTION_ORDER).forEach(function(id){
     if (id === 'education') return;
     right += docxSectionItems(r, id, { before: 120, after: 60 });

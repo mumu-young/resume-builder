@@ -2,8 +2,8 @@
 var DEGREE_OPTIONS = [['', '请选择'], ['大专', '大专'], ['本科', '本科'], ['硕士', '硕士'], ['博士', '博士'], ['其他', '其他']];
 var GENDER_OPTIONS = [['', '不填'], ['男', '男'], ['女', '女']];
 
-var DEFAULT_SECTION_ORDER = ['education', 'work', 'projects', 'skills', 'honors'];
-var DEFAULT_SECTION_TITLES = { education: '教育经历', work: '实习 / 工作经历', projects: '项目经验', skills: '专业技能', honors: '荣誉证书', extra: '其他信息' };
+var DEFAULT_SECTION_ORDER = ['education', 'work', 'projects', 'skills', 'honors', 'profile'];
+var DEFAULT_SECTION_TITLES = { education: '教育经历', work: '实习 / 工作经历', projects: '项目经验', skills: '专业技能', honors: '荣誉证书', profile: '个人简介 / 自我评价', extra: '其他信息' };
 var DEFAULT_TITLE_COLOR = '#4b6e91';
 var DEFAULT_LINE_COLOR = '#c3ccd6';
 
@@ -113,6 +113,12 @@ function secHonorsHTML(d, t, headFn){
   }
   return html;
 }
+function secProfileHTML(d, title, headFn){
+  var text = d.profile;
+  if (!text || !String(text).trim()) return '';
+  return '<section class="tpl-section">' + (headFn || defaultSectionHead)(title || DEFAULT_SECTION_TITLES.profile) +
+    '<p class="tpl-profile">' + esc(text) + '</p></section>';
+}
 function defaultSectionHead(title){
   return '<h2 class="tpl-h2">' + esc(title) + '</h2>';
 }
@@ -123,7 +129,8 @@ function orderedSectionsHTML(d, order, titles, headFn){
     work: secWorkHTML(d, titles.work, headFn),
     projects: secProjectsHTML(d, titles.projects, headFn),
     skills: secSkillsHTML(d, titles.skills, headFn),
-    honors: secHonorsHTML(d, { honors: titles.honors, extra: titles.extra }, headFn)
+    honors: secHonorsHTML(d, { honors: titles.honors, extra: titles.extra }, headFn),
+    profile: secProfileHTML(d, titles.profile, headFn)
   };
   var html = '';
   (order || DEFAULT_SECTION_ORDER).forEach(function(id){ if (map[id]) html += map[id]; });
@@ -139,7 +146,6 @@ function orderedSectionsHTML(d, order, titles, headFn){
   if (b.target) html += '<div class="tpl-target">' + esc(tplTargetLine(b)) + '</div>';
   var contact = tplContactLine(b);
   if (contact) html += '<div class="tpl-contact">' + contact + '</div>';
-  if (b.summary) html += '<p class="tpl-summary">' + esc(b.summary) + '</p>';
   html += '</header>';
   html += orderedSectionsHTML(d, opts.sectionOrder || DEFAULT_SECTION_ORDER, titles);
   html += '</div>';
@@ -155,7 +161,7 @@ function renderClassic(d, opts){
   side += '</div></div>';
   var main = '<div class="tpl-main-head"><h1 class="tpl-name">' + esc(b.name || '你的姓名') + '</h1>' +
     (b.target ? '<div class="tpl-target">' + esc(tplTargetLine(b)) + '</div>' : '') +
-    (b.summary ? '<p class="tpl-summary">' + esc(b.summary) + '</p>' : '') + '</div>';
+    '</div>';
   main += orderedSectionsHTML(d, opts.sectionOrder || DEFAULT_SECTION_ORDER, titles);
   return '<div class="tpl tpl-classic"' + templateStyle(opts) + '><div class="tpl-classic-grid">' +
     '<aside class="tpl-classic-side">' + side + '</aside>' +
@@ -173,7 +179,6 @@ function renderModern(d, opts){
     (contact ? '<div class="tpl-contact">' + contact + '</div>' : '') +
     '</div>' + tplPhoto(b) + '</header>';
   html += '<div class="tpl-body">';
-  if (b.summary) html += '<p class="tpl-summary">' + esc(b.summary) + '</p>';
   html += orderedSectionsHTML(d, opts.sectionOrder || DEFAULT_SECTION_ORDER, titles);
   html += '</div></div>';
   return html;
@@ -189,7 +194,6 @@ function renderElegant(d, opts){
     '<h1 class="tpl-name">' + esc(b.name || '你的姓名') + '</h1>' +
     (b.target ? '<div class="tpl-target">' + esc(tplTargetLine(b)) + '</div>' : '') +
     (contact ? '<div class="tpl-contact">' + contact + '</div>' : '') +
-    (b.summary ? '<p class="tpl-summary">' + esc(b.summary) + '</p>' : '') +
     '</header>';
   html += orderedSectionsHTML(d, opts.sectionOrder || DEFAULT_SECTION_ORDER, titles);
   html += '</div>';
@@ -204,7 +208,6 @@ function renderCompact(d, opts){
   html += '<header class="tpl-header"><h1 class="tpl-name">' + esc(b.name || '你的姓名') + '</h1>' +
     (b.target ? '<div class="tpl-target">' + esc(tplTargetLine(b)) + '</div>' : '') +
     (contact ? '<div class="tpl-contact">' + contact + '</div>' : '') + '</header>';
-  if (b.summary) html += '<p class="tpl-summary">' + esc(b.summary) + '</p>';
   html += orderedSectionsHTML(d, opts.sectionOrder || DEFAULT_SECTION_ORDER, titles);
   html += '</div>';
   return html;
@@ -232,7 +235,6 @@ function renderBizBlue(d, opts){
     html += '<div class="bb-contact"><span class="bb-c-text">' + esc(tplContactItemText(it, b)) + '</span></div>';
   });
   html += '</div></header>';
-  if (b.summary) html += '<p class="tpl-summary">' + esc(b.summary) + '</p>';
   html += orderedSectionsHTML(d, opts.sectionOrder || DEFAULT_SECTION_ORDER, titles, bizBlueSectionHead);
   html += '</div>';
   return html;
@@ -270,7 +272,6 @@ function renderOpen(d, opts){
     });
   }
   var main = '';
-  if (b.summary) main += '<p class="tpl-summary">' + esc(b.summary) + '</p>';
   var order = (opts.sectionOrder || DEFAULT_SECTION_ORDER).filter(function(id){ return id !== 'education'; });
   main += orderedSectionsHTML(d, order, titles, openSectionHead);
   return '<div class="tpl tpl-open"' + templateStyle(opts) + '><div class="tpl-open-grid">' +
@@ -301,7 +302,6 @@ function renderTitleBgBase(d, opts, headFn){
     html += '<div class="tb-contact">' + esc(tplContactItemText(it, b)) + '</div>';
   });
   html += '</div></header>';
-  if (b.summary) html += '<p class="tpl-summary">' + esc(b.summary) + '</p>';
   html += orderedSectionsHTML(d, opts.sectionOrder || DEFAULT_SECTION_ORDER, titles, headFn);
   html += '</div>';
   return html;

@@ -8,18 +8,19 @@ const tplCss = fs3.readFileSync(path3.join(__dirname, '..', '..', 'css', 'templa
 
 function sampleData(){
   return {
-    basic: { name: '张三', phone: '13800000000', email: 'a@b.com', location: '上海', target: '前端开发工程师', years: '3 年', age: '25', summary: '2年经验，擅长Vue。', photo: '' },
+    basic: { name: '张三', phone: '13800000000', email: 'a@b.com', location: '上海', target: '前端开发工程师', years: '3 年', age: '25', photo: '' },
     education: [{ school: '复旦大学', degree: '本科', major: '计算机', start: '2018-09', end: '2022-06', gpa: '3.8/4.0', rank: '前10%', courses: '数据结构、操作系统', description: '参与ACM竞赛' }],
     work: [{ company: '某科技公司', position: '前端实习生', start: '2023-07', end: '2024-06', description: '负责后台管理页面开发\n优化首屏加载' }],
     projects: [{ name: '校园二手平台', role: '后端开发', start: '2023-03', end: '2023-06', tech: 'Node.js、MySQL', link: 'github.com/x', description: '实现订单模块' }],
     skills: [{ category: '编程语言', items: 'JavaScript\nTypeScript' }, { category: '框架', items: 'Vue、React' }],
-    honors: { items: [{ title: '国家奖学金', year: '2022', description: '校级' }], extra: '英语：CET-6\n兴趣：摄影' }
+    honors: { items: [{ title: '国家奖学金', year: '2022', description: '校级' }], extra: '英语：CET-6\n兴趣：摄影' },
+    profile: '2年经验，擅长Vue。'
   };
 }
 function emptyData(){
   return {
     basic: { name: '', gender: '', birthYear: '', phone: '', email: '', location: '', target: '', years: '', summary: '', photo: '' },
-    education: [], work: [], projects: [], skills: [], honors: { items: [], extra: '' }
+    education: [], work: [], projects: [], skills: [], honors: { items: [], extra: '' }, profile: ''
   };
 }
 function load(){
@@ -45,6 +46,7 @@ test('空数据时隐藏空分节', () => {
   eq(html.indexOf('项目经验'), -1, '空项目经验不应显示');
   eq(html.indexOf('专业技能'), -1, '空技能不应显示');
   eq(html.indexOf('荣誉证书'), -1, '空荣誉不应显示');
+  eq(html.indexOf('个人简介 / 自我评价'), -1, '空个人简介不应显示');
 });
 test('工作描述多行转 <li>', () => {
   const html = ctx.renderClean(d);
@@ -53,7 +55,7 @@ test('工作描述多行转 <li>', () => {
 });
 test('HTML 特殊字符被转义', () => {
   const dd = JSON.parse(JSON.stringify(d));
-  dd.basic.summary = '<script>alert(1)</script> & "x"';
+  dd.profile = '<script>alert(1)</script> & "x"';
   const html = ctx.renderClean(dd);
   ok(html.indexOf('&lt;script&gt;') >= 0, 'script 未转义');
   ok(html.indexOf('<script>') === -1, '存在未转义的 script');
@@ -325,5 +327,34 @@ test('开放两栏：教育经历时间与专业分两行排列（独立行 + �
 test('TEMPLATES 顺序：经典模板/开放两栏/标题背景色/标题背景浅色在前', () => {
   const ids = ctx.TEMPLATES.map(function(t){ return t.id; });
   ok(ids[0] === 'bizblue' && ids[1] === 'open' && ids[2] === 'titlebg' && ids[3] === 'titlebglight', '前四个应为指定模板: ' + ids.join(','));
+});
+test('个人简介/自我评价渲染为独立分节且默认在荣誉证书之后', () => {
+  const html = ctx.renderClean(d);
+  ok(html.indexOf('个人简介 / 自我评价') >= 0, '缺少个人简介分节标题');
+  ok(html.indexOf('2年经验，擅长Vue。') >= 0, '缺少个人简介内容');
+  ok(html.indexOf('荣誉证书') < html.indexOf('个人简介 / 自我评价'), '个人简介应默认在荣誉证书之后');
+  ok(html.indexOf('tpl-profile') >= 0, '缺少 tpl-profile 样式类');
+});
+test('个人简介分节小标题可自定义', () => {
+  const html = ctx.renderClean(d, { sectionTitles: { profile: '自我评价' } });
+  ok(html.indexOf('自我评价') >= 0, '自定义小标题未生效');
+  ok(html.indexOf('个人简介 / 自我评价') === -1, '默认标题应被替换');
+});
+test('个人简介分节可自定义排列顺序', () => {
+  const html = ctx.renderClean(d, { sectionOrder: ['profile', 'education', 'work', 'projects', 'skills', 'honors'] });
+  ok(html.indexOf('个人简介 / 自我评价') < html.indexOf('教育经历'), '个人简介应可排到最前');
+});
+test('DEFAULT_SECTION_ORDER 默认含 profile 且在 honors 之后', () => {
+  const idx = ctx.DEFAULT_SECTION_ORDER.indexOf('profile');
+  ok(idx > 0, 'DEFAULT_SECTION_ORDER 应包含 profile');
+  ok(ctx.DEFAULT_SECTION_ORDER[idx - 1] === 'honors', 'profile 应默认排在 honors 之后');
+});
+test('基础信息 summary 不再渲染，个人简介以分节展示', () => {
+  const dd = JSON.parse(JSON.stringify(d));
+  dd.basic.summary = '头部不应出现的简介';
+  const html = ctx.renderClean(dd);
+  ok(html.indexOf('头部不应出现的简介') === -1, 'basic.summary 不应再渲染到头部');
+  ok(html.indexOf('tpl-summary') === -1, '不应再出现 tpl-summary 元素');
+  ok(html.indexOf('2年经验，擅长Vue。') >= 0, 'profile 内容应以分节渲染');
 });
 runAll();

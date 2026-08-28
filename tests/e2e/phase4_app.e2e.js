@@ -32,7 +32,7 @@ const { test, runAll } = require('../lib/suite');
     await ev('__APP__.resetAllData()', true);
     await sleep(150);
 
-    test('T1 启动：1 份默认简历、13 个导航、基础信息模块激活', async () => {
+    test('T1 启动：1 份默认简历、14 个导航、基础信息模块激活', async () => {
       const v = await ev(`(() => ({
         ready: __APP__.state.ready,
         count: __APP__.state.resumes.length,
@@ -47,7 +47,7 @@ const { test, runAll } = require('../lib/suite');
       if (v.count !== 1) throw new Error('默认简历数量应为 1，实际 ' + v.count);
       if (v.title !== '我的第一份简历') throw new Error('默认标题错误: ' + v.title);
       if (v.module !== 'basic') throw new Error('默认模块应为 basic');
-      if (v.nav !== 13) throw new Error('导航应为 13 项，实际 ' + v.nav);
+      if (v.nav !== 14) throw new Error('导航应为 14 项，实际 ' + v.nav);
       if (!v.loadingHidden || !v.appVisible) throw new Error('加载遮罩/主容器可见性错误');
       if (!v.hasNameInput) throw new Error('基础信息输入框缺失');
     });
@@ -56,7 +56,9 @@ const { test, runAll } = require('../lib/suite');
       await goModule('basic');
       await setInput('input[data-path="basic.name"]', '张三');
       await setInput('input[data-path="basic.target"]', '前端开发工程师');
-      await setInput('textarea[data-path="basic.summary"]', '2 年经验，擅长 Vue');
+      await goModule('profile');
+      await setInput('textarea[data-path="profile"]', '2 年经验，擅长 Vue');
+      await goModule('basic');
       await sleep(300);
       const html = await ev('document.getElementById("resume-page").innerHTML');
       if (html.indexOf('张三') < 0) throw new Error('预览缺少姓名');
@@ -289,8 +291,8 @@ const { test, runAll } = require('../lib/suite');
       if (disp !== '') throw new Error('恢复预览失败: ' + disp);
     });
 
-    test('T17 13 个模块均可切换且编辑器有内容', async () => {
-      const ids = ['basic','education','work','projects','skills','honors','sections','templates','margins','export','data','tools','settings'];
+    test('T17 14 个模块均可切换且编辑器有内容', async () => {
+      const ids = ['basic','education','work','projects','skills','honors','profile','sections','templates','margins','export','data','tools','settings'];
       for (const id of ids){
         await goModule(id);
         const v = await ev('__APP__.state.module === "' + id + '" && document.getElementById("editor").innerHTML.length > 50');
