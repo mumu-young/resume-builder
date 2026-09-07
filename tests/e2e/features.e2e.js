@@ -759,6 +759,20 @@ const { test, runAll } = require('../lib/suite');
       if (html.indexOf('相关课程：数据结构、操作系统、计算机网络') < 0) throw new Error('预览未将多行课程合并展示');
     });
 
+    test('问题42 开放两栏照片比例为 7:9', async () => {
+      await ev('__APP__.resetAllData()', true);
+      await goModule('basic');
+      const dataUrl = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+      await ev('__APP__.setByPath("basic.photo", ' + JSON.stringify(dataUrl) + '); __APP__.afterChange(); __APP__.renderModule(); __APP__.renderPreview(); true');
+      await goModule('templates');
+      await click('[data-action="apply-template"][data-id="open"]');
+      await sleep(300);
+      const v = await ev('(() => { const el = document.querySelector(".tpl-open-side .tpl-photo-rect"); if (!el) return null; const r = el.getBoundingClientRect(); return { w: r.width, h: r.height }; })()');
+      if (!v) throw new Error('未找到开放两栏矩形照片');
+      const ratio = v.h / v.w;
+      if (Math.abs(ratio - 9 / 7) > 0.02) throw new Error('照片比例不是 7:9，实测 ' + v.w + 'x' + v.h + ' 比例 ' + ratio.toFixed(3));
+    });
+
     await runAll();
   } finally {
     await b.close();

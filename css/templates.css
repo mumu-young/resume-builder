@@ -118,7 +118,7 @@
 .tpl-open{ --tpl-accent:#1890FF; }
 .tpl-open-grid{ display:grid; grid-template-columns:33% 67%; min-height:297mm; }
 .tpl-open-side{ background:var(--tpl-title-color, var(--tpl-accent)); color:#fff; padding:36px 18px 22px; }
-.tpl-open-side .tpl-photo-rect{ width:108px; height:108px; border:2px solid #fff; margin:0 auto 12px; }
+.tpl-open-side .tpl-photo-rect{ width:84px; height:108px; border:2px solid #fff; margin:0 auto 12px; }
 .tpl-open-side .tpl-photo-round{ width:96px; height:96px; border:2px solid #fff; margin:0 auto 12px; }
 .tpl-open-side .tpl-name{ color:#fff; text-align:center; font-size:calc(var(--tpl-fs, 14px) + 8px); margin:0 0 2px; }
 .tpl-open-side .tpl-target{ color:rgba(255,255,255,.92); text-align:center; margin-bottom:14px; }

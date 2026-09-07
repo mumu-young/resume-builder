@@ -368,4 +368,13 @@ test('教育经历相关课程多行输入以顿号合并展示', () => {
   const html = ctx.renderClean(dd);
   ok(html.indexOf('相关课程：数据结构、操作系统、计算机网络') >= 0, '多行课程应合并为顿号一行展示');
 });
+test('开放两栏矩形照片为 7:9 比例', () => {
+  const m = tplCss.match(/\.tpl-open-side \.tpl-photo-rect\{([^}]*)\}/);
+  ok(m, '缺少开放两栏照片规则');
+  const wm = m[1].match(/width:(\d+)px/), hm = m[1].match(/height:(\d+)px/);
+  ok(wm && hm, '开放两栏照片缺少宽高: ' + m[1]);
+  eq(parseInt(wm[1], 10) * 9, parseInt(hm[1], 10) * 7, '开放两栏矩形照片应保持 7:9 比例');
+  const rr = tplCss.match(/\.tpl-open-side \.tpl-photo-round\{([^}]*)\}/);
+  ok(rr && /width:96px/.test(rr[1]) && /height:96px/.test(rr[1]), '圆形照片应为正方形');
+});
 runAll();
