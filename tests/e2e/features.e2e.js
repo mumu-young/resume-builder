@@ -759,7 +759,7 @@ const { test, runAll } = require('../lib/suite');
       if (html.indexOf('相关课程：数据结构、操作系统、计算机网络') < 0) throw new Error('预览未将多行课程合并展示');
     });
 
-    test('问题42 开放两栏照片比例为 7:9', async () => {
+        test('问题42 开放两栏照片比例为 7:9', async () => {
       await ev('__APP__.resetAllData()', true);
       await goModule('basic');
       const dataUrl = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
@@ -767,10 +767,47 @@ const { test, runAll } = require('../lib/suite');
       await goModule('templates');
       await click('[data-action="apply-template"][data-id="open"]');
       await sleep(300);
-      const v = await ev('(() => { const el = document.querySelector(".tpl-open-side .tpl-photo-rect"); if (!el) return null; const r = el.getBoundingClientRect(); return { w: r.width, h: r.height }; })()');
+      const v = await ev(`(() => {
+        const el = document.querySelector('.tpl-open-side .tpl-photo-rect');
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return { w: r.width, h: r.height };
+      })()`);
       if (!v) throw new Error('未找到开放两栏矩形照片');
       const ratio = v.h / v.w;
       if (Math.abs(ratio - 9 / 7) > 0.02) throw new Error('照片比例不是 7:9，实测 ' + v.w + 'x' + v.h + ' 比例 ' + ratio.toFixed(3));
+    });
+
+        test('问题43 经典两栏：教育经历内容位于左栏', async () => {
+      await ev('__APP__.resetAllData()', true);
+      await goModule('education');
+      await click('[data-action="add-entry"][data-type="education"]');
+      await setInput('input[data-path="education.0.school"]', '复旦大学');
+      await setInput('input[data-path="education.0.major"]', '计算机');
+      await goModule('work');
+      await click('[data-action="add-entry"][data-type="work"]');
+      await setInput('input[data-path="work.0.company"]', '某公司');
+      await goModule('templates');
+      await click('[data-action="apply-template"][data-id="classic"]');
+      await sleep(300);
+      const v = await ev(`(() => {
+        const side = document.querySelector('.tpl-classic-side');
+        const main = document.querySelector('.tpl-classic-main');
+        if (!side || !main) return null;
+        const school = side.querySelector('.side-edu-school');
+        return {
+          sideHasEdu: side.querySelector('.side-edu-item') !== null,
+          sideSchool: school ? school.textContent : null,
+          mainHasEduHead: main.textContent.indexOf('教育经历') >= 0,
+          sideHasContact: side.textContent.indexOf('联系方式') >= 0,
+          mainHasWork: main.textContent.indexOf('某公司') >= 0
+        };
+      })()`);
+      if (!v) throw new Error('未找到经典两栏结构');
+      if (!v.sideHasEdu || v.sideSchool !== '复旦大学') throw new Error('教育经历应在左栏: ' + JSON.stringify(v));
+      if (!v.sideHasContact) throw new Error('左栏缺少联系方式');
+      if (v.mainHasEduHead) throw new Error('右栏不应再出现教育经历');
+      if (!v.mainHasWork) throw new Error('右栏应显示工作经历');
     });
 
     await runAll();

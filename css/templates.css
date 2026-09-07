@@ -58,7 +58,12 @@
 }
 .side-contact div{ margin:4px 0; font-size:calc(var(--tpl-fs, 14px) - 1px); word-break:break-all; }
 .side-line{ font-size:calc(var(--tpl-fs, 14px) - 1px); margin:4px 0; line-height:1.6; }
-.side-cat{ font-weight:700; }
+
+.tpl-classic-side .side-edu-item{ margin:0 0 12px; }
+.tpl-classic-side .side-edu-school{ font-weight:700; color:#111; font-size:calc(var(--tpl-fs, 14px) + 1px); }
+.tpl-classic-side .side-edu-major{ font-size:calc(var(--tpl-fs, 14px) - 1px); color:#333; margin:1px 0 0; }
+.tpl-classic-side .side-edu-date{ font-size:calc(var(--tpl-fs, 14px) - 2px); color:#667; margin:1px 0 0; }
+.tpl-classic-side ul{ color:#444; }
 
 /* ===== 现代简约 ===== */
 .tpl-modern{ --tpl-accent:#2563eb; }

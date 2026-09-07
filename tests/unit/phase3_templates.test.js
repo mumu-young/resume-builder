@@ -132,10 +132,17 @@ test('小标题与分割线颜色注入 CSS 变量', () => {
   ok(html.indexOf('--tpl-title-color:#6f7d8c') >= 0, '标题颜色未注入');
   ok(html.indexOf('--tpl-line-color:#d0d5da') >= 0, '分割线颜色未注入');
 });
-test('classic 模板五个分节都在正文区且按顺序渲染', () => {
+test('classic 模板：教育经历固定在左栏，其余分节在正文区按顺序渲染', () => {
   const html = ctx.renderClassic(d, { sectionOrder: ['projects', 'education', 'work', 'skills', 'honors'] });
-  ok(html.indexOf('tpl-classic-main') >= 0, '正文区缺失');
-  ok(html.indexOf('项目经验') < html.indexOf('教育经历'), '正文区顺序错误');
+  const sideStart = html.indexOf('<aside class="tpl-classic-side">');
+  const mainStart = html.indexOf('<main class="tpl-classic-main">');
+  ok(sideStart >= 0 && mainStart > sideStart, '两栏结构缺失');
+  const eduH = html.indexOf('教育经历');
+  ok(eduH > sideStart && eduH < mainStart, '教育经历应固定在左栏');
+  const projIdx = html.indexOf('项目经验');
+  const workIdx = html.indexOf('实习 / 工作经历');
+  ok(projIdx > mainStart, '项目经验应在正文区');
+  ok(projIdx < workIdx, '正文区其余分节顺序错误');
 });
 
 test('可自定义小标题内容', () => {
@@ -376,5 +383,23 @@ test('开放两栏矩形照片为 7:9 比例', () => {
   eq(parseInt(wm[1], 10) * 9, parseInt(hm[1], 10) * 7, '开放两栏矩形照片应保持 7:9 比例');
   const rr = tplCss.match(/\.tpl-open-side \.tpl-photo-round\{([^}]*)\}/);
   ok(rr && /width:96px/.test(rr[1]) && /height:96px/.test(rr[1]), '圆形照片应为正方形');
+});
+test('classic 模板左栏教育经历展示学校/专业/时间，右栏不含教育经历', () => {
+  const html = ctx.renderClassic(d);
+  const sideStart = html.indexOf('<aside class="tpl-classic-side">');
+  const mainStart = html.indexOf('<main class="tpl-classic-main">');
+  const side = html.slice(sideStart, mainStart);
+  const main = html.slice(mainStart);
+  ok(side.indexOf('复旦大学') >= 0, '左栏缺少学校');
+  ok(side.indexOf('本科 · 计算机') >= 0, '左栏缺少学历/专业');
+  ok(side.indexOf('2018.09 - 2022.06') >= 0, '左栏缺少时间');
+  ok(side.indexOf('相关课程：数据结构、操作系统') >= 0, '左栏缺少课程');
+  ok(side.indexOf('side-edu-item') >= 0, '左栏缺少教育条目结构');
+  ok(main.indexOf('教育经历') === -1, '右栏不应再渲染教育经历');
+});
+test('classic 模板教育经历标题固定为教育经历，不跟随小标题设置', () => {
+  const html = ctx.renderClassic(d, { sectionTitles: { education: '教育背景' } });
+  ok(html.indexOf('教育经历') >= 0, '左栏应显示默认标题');
+  ok(html.indexOf('教育背景') === -1, '教育经历标题不应跟随小标题内容设置');
 });
 runAll();

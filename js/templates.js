@@ -164,10 +164,26 @@ function renderClassic(d, opts){
   side += '<div class="side-section">' + tplPhoto(b) + '<div class="side-h">联系方式</div><div class="side-contact">';
   tplContactItems(b).forEach(function(it){ side += '<div>' + esc(tplContactItemText(it, b)) + '</div>'; });
   side += '</div></div>';
+  if (d.education.length){
+    side += '<div class="side-section"><div class="side-h">' + esc(DEFAULT_SECTION_TITLES.education) + '</div>';
+    d.education.forEach(function(e){
+      var li = '';
+      if (e.courses) li += tplCoursesLi(e.courses);
+      if (e.description) li += nl2li(e.description);
+      side += '<div class="side-edu-item">' +
+        '<div class="side-edu-school">' + esc(e.school || '教育经历') + '</div>' +
+        (e.degree || e.major ? '<div class="side-edu-major">' + esc([e.degree, e.major].filter(Boolean).join(' · ')) + '</div>' : '') +
+        (tplDateRange(e.start, e.end) ? '<div class="side-edu-date">' + esc(tplDateRange(e.start, e.end)) + '</div>' : '') +
+        (li ? '<ul class="side-edu-list">' + li + '</ul>' : '') +
+        '</div>';
+    });
+    side += '</div>';
+  }
   var main = '<div class="tpl-main-head"><h1 class="tpl-name">' + esc(b.name || '你的姓名') + '</h1>' +
     (b.target ? '<div class="tpl-target">' + esc(tplTargetLine(b)) + '</div>' : '') +
     '</div>';
-  main += orderedSectionsHTML(d, opts.sectionOrder || DEFAULT_SECTION_ORDER, titles);
+  var order = (opts.sectionOrder || DEFAULT_SECTION_ORDER).filter(function(id){ return id !== 'education'; });
+  main += orderedSectionsHTML(d, order, titles);
   return '<div class="tpl tpl-classic"' + templateStyle(opts) + '><div class="tpl-classic-grid">' +
     '<aside class="tpl-classic-side">' + side + '</aside>' +
     '<main class="tpl-classic-main">' + main + '</main></div></div>';
