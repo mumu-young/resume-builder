@@ -50,8 +50,8 @@ test('空数据时隐藏空分节', () => {
 });
 test('工作描述多行转 <li>', () => {
   const html = ctx.renderClean(d);
-  ok(html.indexOf('<li>负责后台管理页面开发</li>') >= 0, '缺少第一行条目');
-  ok(html.indexOf('<li>优化首屏加载</li>') >= 0, '缺少第二行条目');
+  ok(html.indexOf('<li><span class="rf" data-field="work.0.desc.0">负责后台管理页面开发</span></li>') >= 0, '缺少第一行条目');
+  ok(html.indexOf('<li><span class="rf" data-field="work.0.desc.1">优化首屏加载</span></li>') >= 0, '缺少第二行条目');
 });
 test('HTML 特殊字符被转义', () => {
   const dd = JSON.parse(JSON.stringify(d));
@@ -175,8 +175,8 @@ test('templates.css：简历列表不使用项目符号', () => {
 });
 test('简历内分隔符使用 |，不再使用 ·', () => {
   const html = ctx.renderClean(d);
-  ok(html.indexOf('年龄：25岁 | 电话：13800000000') >= 0, '联系信息未用 | 分隔');
-  ok(html.indexOf('复旦大学 | 计算机') >= 0, '教育经历学校/专业未用 | 分隔');
+  ok(html.indexOf('年龄：25岁</span> | <span class="rf" data-field="contact.phone">电话：13800000000</span>') >= 0, '联系信息未用 | 分隔');
+  ok(html.indexOf('data-field="education.0.school">复旦大学</span> | <span class="rf" data-field="education.0.major">计算机</span>') >= 0, '教育经历学校/专业未用 | 分隔');
   ok(html.indexOf(' | ') >= 0, '缺少 | 分隔符');
   ok(html.indexOf(' · ') === -1, '仍存在 · 分隔符');
 });
@@ -225,10 +225,10 @@ test('联系信息分隔符可选 · 与空白', () => {
   const dd = JSON.parse(JSON.stringify(d));
   dd.basic.contactSeparator = '·';
   const m = ctx.renderClean(dd);
-  ok(m.indexOf('年龄：25岁 · 电话') >= 0, '· 分隔符未生效');
+  ok(m.indexOf('年龄：25岁</span> · <span class="rf" data-field="contact.phone">电话：13800000000</span>') >= 0, '· 分隔符未生效');
   dd.basic.contactSeparator = ' ';
   const s = ctx.renderClean(dd);
-  ok(s.indexOf('年龄：25岁&nbsp;&nbsp;&nbsp;&nbsp;电话') >= 0, '空白分隔符未生效（应使用宽空白）');
+  ok(s.indexOf('年龄：25岁</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="rf" data-field="contact.phone">电话：13800000000</span>') >= 0, '空白分隔符未生效（应使用宽空白）');
 });
 test('显示标签开关：关闭后隐藏字段标签', () => {
   const dd = JSON.parse(JSON.stringify(d));
@@ -305,23 +305,23 @@ test('templates.css：标题背景浅色头部样式与标题背景色一致', (
 test('开放两栏教育经历按参考排版（学校加粗、时间与专业分两行、描述列表）', () => {
   const html = ctx.getTemplate('open').render(d);
   ok(html.indexOf('op-edu-item') >= 0, '缺少教育经历条目容器');
-  ok(html.indexOf('<div class="op-edu-school">复旦大学</div>') >= 0, '学校应单独放大加粗');
-  ok(html.indexOf('<div class="op-edu-date">2018.09 - 2022.06</div>') >= 0, '时间应单独一行');
-  ok(html.indexOf('<div class="op-edu-major">计算机</div>') >= 0, '专业应单独一行');
-  ok(html.indexOf('op-edu-school">复旦大学</div>') < html.indexOf('op-edu-date'), '学校应在时间上方');
-  ok(html.indexOf('op-edu-date">2018.09 - 2022.06</div>') < html.indexOf('op-edu-major">计算机</div>'), '时间应在专业上方（两行排列）');
+  ok(html.indexOf('<div class="op-edu-school"><span class="rf" data-field="education.0.school">复旦大学</span></div>') >= 0, '学校应单独放大加粗');
+  ok(html.indexOf('<div class="op-edu-date"><span class="rf" data-field="education.0.dates">2018.09 - 2022.06</span></div>') >= 0, '时间应单独一行');
+  ok(html.indexOf('<div class="op-edu-major"><span class="rf" data-field="education.0.major">计算机</span></div>') >= 0, '专业应单独一行');
+  ok(html.indexOf('op-edu-school') < html.indexOf('op-edu-date'), '学校应在时间上方');
+  ok(html.indexOf('op-edu-date') < html.indexOf('op-edu-major'), '时间应在专业上方（两行排列）');
   ok(html.indexOf('op-edu-line') === -1, '不应再使用同一行容器 op-edu-line');
   ok(html.indexOf('复旦大学 | 计算机') === -1, '学校与专业间不应有分隔符');
   ok(html.indexOf('op-edu-list') >= 0, '缺少描述列表');
   ok(html.indexOf('相关课程：数据结构、操作系统') >= 0, '缺少相关课程行');
-  ok(html.indexOf('<li>参与ACM竞赛</li>') >= 0, '缺少经历描述行');
+  ok(html.indexOf('<li><span class="rf" data-field="education.0.desc.0">参与ACM竞赛</span></li>') >= 0, '缺少经历描述行');
   const schoolCss = tplCss.match(/\.tpl-open-side \.op-edu-school\{([^}]*)\}/);
   ok(schoolCss && /font-weight:700/.test(schoolCss[1]) && /font-size:calc\(var\(--tpl-fs, 14px\) \+ 2px\)/.test(schoolCss[1]), '学校应加粗且字号较大');
 });
 test('开放两栏：教育经历时间与专业分两行排列（独立行 + 样式）', () => {
   const html = ctx.getTemplate('open').render(d);
-  const dateHtml = '<div class="op-edu-date">2018.09 - 2022.06</div>';
-  const majorHtml = '<div class="op-edu-major">计算机</div>';
+  const dateHtml = '<div class="op-edu-date"><span class="rf" data-field="education.0.dates">2018.09 - 2022.06</span></div>';
+  const majorHtml = '<div class="op-edu-major"><span class="rf" data-field="education.0.major">计算机</span></div>';
   ok(html.indexOf(dateHtml) >= 0, '时间应是独立 div 行');
   ok(html.indexOf(majorHtml) >= 0, '专业应是独立 div 行');
   ok(html.indexOf(dateHtml) < html.indexOf(majorHtml), '时间行应在专业行之前');
@@ -391,7 +391,7 @@ test('classic 模板左栏教育经历展示学校/专业/时间，右栏不含�
   const side = html.slice(sideStart, mainStart);
   const main = html.slice(mainStart);
   ok(side.indexOf('复旦大学') >= 0, '左栏缺少学校');
-  ok(side.indexOf('本科 · 计算机') >= 0, '左栏缺少学历/专业');
+  ok(side.indexOf('本科</span> · <span class="rf" data-field="education.0.major">计算机</span>') >= 0, '左栏缺少学历/专业');
   ok(side.indexOf('2018.09 - 2022.06') >= 0, '左栏缺少时间');
   ok(side.indexOf('相关课程：数据结构、操作系统') >= 0, '左栏缺少课程');
   ok(side.indexOf('side-edu-item') >= 0, '左栏缺少教育条目结构');
@@ -401,5 +401,40 @@ test('classic 模板教育经历标题固定为教育经历，不跟随小标题
   const html = ctx.renderClassic(d, { sectionTitles: { education: '教育背景' } });
   ok(html.indexOf('教育经历') >= 0, '左栏应显示默认标题');
   ok(html.indexOf('教育背景') === -1, '教育经历标题不应跟随小标题内容设置');
+});
+test('rf 按加粗区间渲染片段并保留 data-field 标识', () => {
+  const local = loadScripts({}, ['js/utils.js', 'js/templates.js']);
+  const dd = JSON.parse(JSON.stringify(d));
+  local.setRichMap({ profile: [[0, 3]] });
+  const html = local.renderClean(dd);
+  ok(html.indexOf('data-field="profile"') >= 0, '缺少字段标识');
+  ok(html.indexOf('<span class="rf-b">2年经</span>') >= 0, '未按区间渲染加粗片段');
+  ok(html.indexOf('<span class="rf-b">验，擅长Vue。</span>') === -1, '不应加粗区间外文本');
+});
+test('未设置加粗时渲染无 rf-b，空/越界区间安全', () => {
+  const local = loadScripts({}, ['js/utils.js', 'js/templates.js']);
+  local.setRichMap({});
+  let html = local.renderClean(d);
+  ok(html.indexOf('rf-b') === -1, '无加粗时不应出现 rf-b');
+  local.setRichMap({ profile: [[999, 1200], [0, 0]] });
+  html = local.renderClean(d);
+  ok(html.indexOf('data-field="profile"') >= 0, '越界区间不应破坏渲染');
+  ok(html.indexOf('2年经验，擅长Vue。') >= 0, '越界区间不应丢失正文');
+});
+test('加粗片段内的 HTML 特殊字符仍被转义', () => {
+  const local = loadScripts({}, ['js/utils.js', 'js/templates.js']);
+  const dd = JSON.parse(JSON.stringify(d));
+  dd.profile = '<b>x</b> 正常文本';
+  local.setRichMap({ profile: [[0, 8]] });
+  const html = local.renderClean(dd);
+  ok(html.indexOf('<span class="rf-b">&lt;b&gt;x&lt;/b&gt;</span>') >= 0, '加粗片段未转义');
+});
+test('9 套模板的可编辑字段都带 data-field 标识', () => {
+  const local = loadScripts({}, ['js/utils.js', 'js/templates.js']);
+  local.setRichMap({});
+  for (const t of local.TEMPLATES){
+    const html = t.render(d);
+    ok(html.indexOf('data-field="basic.name"') >= 0, t.id + ' 缺少姓名字段标识');
+  }
 });
 runAll();

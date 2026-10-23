@@ -24,7 +24,7 @@
 
   var state = {
     resumes: [], currentId: null, settings: null, module: 'basic',
-    activeEntry: null, previewVisible: true, lastSavedAt: null, dirty: false, ready: false
+    activeEntry: null, previewVisible: true, lastSavedAt: null, dirty: false, ready: false, pendingRanges: null
   };
 
   function current(){
@@ -47,6 +47,7 @@
       templateId: (state.settings && state.settings.defaultTemplate) || 'clean',
       sectionOrder: DEFAULT_SECTION_ORDER.slice(),
       sectionTitles: Object.assign({}, DEFAULT_SECTION_TITLES),
+      rich: {},
       style: { titleColor: DEFAULT_TITLE_COLOR, lineColor: DEFAULT_LINE_COLOR, lineWidth: 2, showLines: true, pagePadding: { top: 10, right: 12, bottom: 10, left: 12 } },
       data: newResumeData()
     };
@@ -68,6 +69,11 @@
     if (h.extra === undefined) h.extra = '';
     if (r.data.profile === undefined){ r.data.profile = b.summary || ''; b.summary = ''; }
     if (typeof r.data.profile !== 'string') r.data.profile = String(r.data.profile == null ? '' : r.data.profile);
+    if (!r.rich || typeof r.rich !== 'object' || Array.isArray(r.rich)) r.rich = {};
+    Object.keys(r.rich).forEach(function(k){
+      var nr = normalizeRanges(r.rich[k]);
+      if (nr.length) r.rich[k] = nr; else delete r.rich[k];
+    });
     if (!r.templateId) r.templateId = 'bizblue';
     if (r.updatedAt === undefined) r.updatedAt = Date.now();
     if (!Array.isArray(r.sectionOrder) || !r.sectionOrder.length) r.sectionOrder = DEFAULT_SECTION_ORDER.slice();
@@ -483,6 +489,7 @@
     }
     el.innerHTML = html;
     updateInlineCounts();
+    markBoldFields();
   }  /* ============ 预览与字数 ============ */
   function renderPreview(){
     var page = $('#resume-page');
@@ -501,6 +508,7 @@
     }
     if (!r){ page.innerHTML = '<div class="empty-tip">请先新建一份简历。</div>'; return; }
     var t = getTemplate(r.templateId);
+    setRichMap(r.rich || {});
     page.innerHTML = t.render(r.data, {
       sectionOrder: r.sectionOrder,
       sectionTitles: r.sectionTitles,
@@ -508,6 +516,148 @@
       lineColor: r.style.lineColor
     });
   }
+  /* ============ 加粗标注（预览拖选） ============ */
+  function textOffsetIn(el, node, offset){
+    try {
+      var r = document.createRange();
+      r.selectNodeContents(el);
+      r.setEnd(node, offset);
+      return r.toString().length;
+    } catch (e) { return 0; }
+  }
+  function collectSelectionRanges(){
+    var sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) return [];
+    var range = sel.getRangeAt(0);
+    var page = $('#resume-page');
+    if (!page || !page.contains(range.commonAncestorContainer)) return [];
+    var spans = page.querySelectorAll('.rf[data-field]');
+    var out = [];
+    for (var i = 0; i < spans.length; i++){
+      var el = spans[i];
+      if (typeof range.intersectsNode === 'function' && !range.intersectsNode(el)) continue;
+      var text = el.textContent || '';
+      if (!text) continue;
+      var s = 0, e = text.length;
+      if (el.contains(range.startContainer)) s = textOffsetIn(el, range.startContainer, range.startOffset);
+      if (el.contains(range.endContainer)) e = textOffsetIn(el, range.endContainer, range.endOffset);
+      s = Math.max(0, Math.min(s, text.length));
+      e = Math.max(0, Math.min(e, text.length));
+      if (e > s) out.push({ path: el.getAttribute('data-field'), start: s, end: e });
+    }
+    return out;
+  }
+  function showRichToolbar(rect){
+    var tb = $('#rich-toolbar');
+    if (!tb) return;
+    tb.classList.remove('hidden');
+    var w = tb.offsetWidth || 200, h = tb.offsetHeight || 40;
+    var left = Math.max(8, Math.min(rect.left, window.innerWidth - w - 8));
+    var top = rect.bottom + 8;
+    if (top + h > window.innerHeight - 8) top = Math.max(8, rect.top - h - 8);
+    tb.style.left = Math.round(left) + 'px';
+    tb.style.top = Math.round(top) + 'px';
+  }
+  function hideRichToolbar(){
+    var tb = $('#rich-toolbar');
+    if (tb) tb.classList.add('hidden');
+    state.pendingRanges = null;
+  }
+  function onPreviewSelectionEnd(){
+    setTimeout(function(){
+      var items = collectSelectionRanges();
+      if (!items.length){ hideRichToolbar(); return; }
+      state.pendingRanges = items;
+      var sel = window.getSelection();
+      var rect = null;
+      try { if (sel && sel.rangeCount) rect = sel.getRangeAt(0).getBoundingClientRect(); } catch (e) {}
+      if (!rect || (!rect.width && !rect.height)) rect = { left: 120, top: 120, bottom: 140 };
+      showRichToolbar(rect);
+    }, 0);
+  }
+  function applyRichBold(mode){
+    var r = current();
+    var items = state.pendingRanges;
+    if (!r || !items || !items.length) return;
+    r.rich = r.rich || {};
+    items.forEach(function(it){
+      if (!it || !it.path) return;
+      var cur = Array.isArray(r.rich[it.path]) ? r.rich[it.path].map(function(x){ return [x[0], x[1]]; }) : [];
+      var next = mode === 'remove' ? subtractRange(cur, it.start, it.end) : normalizeRanges(cur.concat([[it.start, it.end]]));
+      if (next.length) r.rich[it.path] = next; else delete r.rich[it.path];
+    });
+    try { window.getSelection().removeAllRanges(); } catch (e) {}
+    hideRichToolbar();
+    afterChange();
+    renderPreview();
+    renderModule();
+    showToast(mode === 'remove' ? '已取消加粗' : '已加粗选中文字');
+  }
+  function richKeysForEditor(path){
+    var keys = [path];
+    var m = path.match(/^(education|work|projects)\.(\d+)\.description$/);
+    if (m) keys.push('__prefix__:' + m[1] + '.' + m[2] + '.desc.');
+    var h = path.match(/^honors\.items\.(\d+)\.(title|year|description)$/);
+    if (h) keys.push('honors.' + h[1] + '.' + (h[2] === 'description' ? 'desc' : h[2]));
+    var ct = path.match(/^basic\.(age|phone|email|location|years)$/);
+    if (ct) keys.push('contact.' + ct[1]);
+    return keys;
+  }
+  function fieldHasBold(rich, path){
+    var keys = richKeysForEditor(path);
+    for (var i = 0; i < keys.length; i++){
+      var k = keys[i];
+      if (k.indexOf('__prefix__:') === 0){
+        var pre = k.slice(11);
+        for (var rk in rich){ if (rk.indexOf(pre) === 0 && Array.isArray(rich[rk]) && rich[rk].length) return true; }
+        continue;
+      }
+      if (Array.isArray(rich[k]) && rich[k].length) return true;
+    }
+    return false;
+  }
+  function clearFieldBold(path){
+    var r = current();
+    if (!r || !path || !r.rich) return;
+    var removed = false;
+    richKeysForEditor(path).forEach(function(k){
+      if (k.indexOf('__prefix__:') === 0){
+        var pre = k.slice(11);
+        Object.keys(r.rich).forEach(function(rk){
+          if (rk.indexOf(pre) === 0){ delete r.rich[rk]; removed = true; }
+        });
+        return;
+      }
+      if (r.rich[k]){ delete r.rich[k]; removed = true; }
+    });
+    if (!removed) return;
+    afterChange();
+    renderPreview();
+    renderModule();
+    showToast('已取消该字段的加粗');
+  }
+  function markBoldFields(){
+    var r = current();
+    if (!r || !r.rich) return;
+    $$('#editor [data-path]').forEach(function(el){
+      var path = el.getAttribute('data-path');
+      if (!fieldHasBold(r.rich, path)) return;
+      var f = el.closest ? el.closest('.field') : null;
+      if (!f) return;
+      var label = f.querySelector('label');
+      if (!label || label.querySelector('.rich-badge')) return;
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'rich-badge';
+      b.setAttribute('data-action', 'clear-field-bold');
+      b.setAttribute('data-field', path);
+      b.title = '该字段含加粗文字，点击取消加粗';
+      b.textContent = 'B 已加粗';
+      label.appendChild(document.createTextNode(' '));
+      label.appendChild(b);
+    });
+  }
+
   function resumeStats(){
     var d = data();
     var empty = { sections: { basic: 0, education: 0, work: 0, projects: 0, skills: 0, honors: 0, profile: 0 }, total: 0, noSpace: 0 };
@@ -1004,6 +1154,9 @@
       case 'star-gen': starGen(); break;
       case 'star-copy': starCopy(); break;
       case 'star-insert': starInsert(); break;
+      case 'rich-bold': applyRichBold('add'); break;
+      case 'rich-unbold': applyRichBold('remove'); break;
+      case 'clear-field-bold': clearFieldBold(btn.getAttribute('data-field')); break;
     }
   }
   function onImportFile(e){
@@ -1057,6 +1210,22 @@
         state.activeEntry = { type: card.dataset.entryType, idx: parseInt(card.dataset.entryIdx, 10) };
       }
     });
+    var pageEl = $('#resume-page');
+    if (pageEl){
+      pageEl.addEventListener('mouseup', onPreviewSelectionEnd);
+      pageEl.addEventListener('touchend', onPreviewSelectionEnd);
+    }
+    var richTb = $('#rich-toolbar');
+    if (richTb) richTb.addEventListener('mousedown', function(e){ e.preventDefault(); });
+    document.addEventListener('mousedown', function(e){
+      var t = e.target;
+      if (!t || !t.closest) return;
+      if (t.closest('#rich-toolbar')) return;
+      if (t.closest('#resume-page')) return;
+      hideRichToolbar();
+    });
+    var pscroll = $('#preview-scroll');
+    if (pscroll) pscroll.addEventListener('scroll', hideRichToolbar);
     var sw = $('#preview-switch');
     if (sw) sw.addEventListener('change', function(){ togglePreview(); });
     $('#import-file').addEventListener('change', onImportFile);
@@ -1104,6 +1273,15 @@
     importPayload: importPayload,
     resetAllData: resetAllData,
     flushSave: flushSave,
+    normalizeRanges: normalizeRanges,
+    subtractRange: subtractRange,
+    rich: {
+      collect: collectSelectionRanges,
+      apply: applyRichBold,
+      clearField: clearFieldBold,
+      hide: hideRichToolbar,
+      mark: markBoldFields
+    },
     setSettings: function(path, val){
       setSettingsByPath(path, val);
       applyTheme();

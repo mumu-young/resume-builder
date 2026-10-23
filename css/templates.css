@@ -174,3 +174,9 @@
 .tpl-titlebg .tpl-section, .tpl-titlebglight .tpl-section{ margin-bottom:9px; }
 .tpl-titlebg .tpl-item, .tpl-titlebglight .tpl-item{ margin-bottom:8px; }
 .tpl-titlebg .tpl-summary, .tpl-titlebglight .tpl-summary{ margin:6px 0; }
+
+
+/* ===== 自定义加粗片段（仅 PDF/打印与预览生效） ===== */
+.resume-page .rf{ display:inline; }
+.resume-page .rf-b{ font-weight:700; }
+.resume-page ::selection{ background:rgba(37,99,235,.25); }

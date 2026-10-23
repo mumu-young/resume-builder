@@ -41,4 +41,10 @@ test('style.css 包含浅色/深色主题变量', () => {
   matches(styleCss, /--bg:\s*#0f172a/i, '深色主题变量缺失');
 });
 
+test('简历工坊.html 含加粗工具栏，打印时隐藏', () => {
+  ok(indexHtml.includes('id="rich-toolbar"'), '缺少加粗工具栏');
+  ok(indexHtml.includes('data-action="rich-bold"') && indexHtml.includes('data-action="rich-unbold"'), '缺少加粗/取消加粗按钮');
+  ok(styleCss.includes('.rich-toolbar'), '缺少工具栏样式');
+  matches(styleCss, /@media print[\s\S]*?\.rich-toolbar\s*\{\s*display\s*:\s*none/i, '打印时未隐藏工具栏');
+});
 runAll();

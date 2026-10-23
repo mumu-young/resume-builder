@@ -188,3 +188,22 @@ body.dark .preview-pane{ background:#0b1526; }
 .mini-titlebglight .m-band-light{ height:10px; background:#eaf1fb; border-left:4px solid var(--accent); border-radius:3px; }
 .mini-titlebglight .m-rows{ display:flex; gap:8px; }
 .mini-titlebglight .m-rows .m-line{ flex:1; }
+
+
+/* ===== 加粗标注工具（仅预览，不影响打印） ===== */
+.rich-toolbar{
+  position:fixed; z-index:1000; display:flex; gap:6px; padding:6px;
+  background:var(--panel, #fff); border:1px solid var(--border, #d5dbe3);
+  border-radius:8px; box-shadow:0 6px 18px rgba(15,23,42,.18);
+}
+.rich-toolbar.hidden{ display:none !important; }
+.rich-badge{
+  margin-left:6px; padding:1px 7px; border:1px solid #b9c6d8; border-radius:10px;
+  background:#eef4ff; color:#1f3a5f; font-size:11px; font-weight:700; cursor:pointer; line-height:1.5;
+}
+.rich-badge:hover{ background:#dbe8ff; }
+body.dark .rich-badge{ background:#22304a; border-color:#3b5578; color:#cfe3ff; }
+body.dark .rich-badge:hover{ background:#2b3d5c; }
+@media print{
+  .rich-toolbar{ display:none !important; }
+}

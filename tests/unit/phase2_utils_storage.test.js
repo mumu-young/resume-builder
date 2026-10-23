@@ -117,4 +117,16 @@ test('storage IndexedDB 模式：同 id 覆盖、批量保存、清空', async (
   eq((await ctx.Storage.loadResumes()).length, 0);
 });
 
+test('normalizeRanges 合并重叠与相邻区间并忽略非法值', () => {
+  const ctx = loadScripts({}, ['js/utils.js']);
+  eq(JSON.stringify(ctx.normalizeRanges([[5, 8], [0, 2], [2, 4], [7, 9]])), JSON.stringify([[0, 4], [5, 9]]));
+  eq(JSON.stringify(ctx.normalizeRanges([[1, 1], [3, 2], [1, 4]])), JSON.stringify([[1, 4]]));
+  eq(JSON.stringify(ctx.normalizeRanges(null)), '[]');
+});
+test('subtractRange 可从已有区间中挖掉选区', () => {
+  const ctx = loadScripts({}, ['js/utils.js']);
+  eq(JSON.stringify(ctx.subtractRange([[0, 10]], 3, 5)), JSON.stringify([[0, 3], [5, 10]]));
+  eq(JSON.stringify(ctx.subtractRange([[0, 10]], -5, 2)), JSON.stringify([[2, 10]]));
+  eq(JSON.stringify(ctx.subtractRange([[0, 2]], 0, 9)), JSON.stringify([]));
+});
 runAll();
