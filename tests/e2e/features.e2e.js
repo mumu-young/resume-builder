@@ -1015,7 +1015,7 @@ const { test, runAll } = require('../lib/suite');
     });
 
 
-    test('问题50 PDF 预览可显示多页与分页虚线', async () => {
+    test('问题50 PDF 预览按页拆分显示每一页内容', async () => {
       await ev('__APP__.resetAllData()', true);
       await sleep(300);
       await ev(`(() => {
@@ -1036,11 +1036,15 @@ const { test, runAll } = require('../lib/suite');
         const badge = document.getElementById('pdf-page-count').textContent;
         const m = badge.match(/共 (\\d+) 页/);
         const pages = m ? parseInt(m[1], 10) : 0;
-        return { badge: badge, pages: pages, breaks: document.querySelectorAll('#pdf-preview-sheet .pdf-break').length, sheetHeight: document.getElementById('pdf-preview-sheet').getBoundingClientRect().height };
-      })()`);
-      if (!v || v.pages < 2) throw new Error('长简历预览页数应 >= 2: ' + JSON.stringify(v));
-      if (v.breaks !== v.pages - 1) throw new Error('分页虚线条数应等于页数-1: ' + JSON.stringify(v));
-      if (!(v.sheetHeight > 1100)) throw new Error('预览页高度异常: ' + JSON.stringify(v));
+        const pageEls = Array.prototype.slice.call(document.querySelectorAll('#pdf-preview-sheet .pdf-page'));
+        const heights = pageEls.map(function(el){ return Math.round(el.getBoundingClientRect().height); });
+        const labels = Array.prototype.map.call(document.querySelectorAll('#pdf-preview-sheet .pdf-page-label'), function(el){ return el.textContent; });
+        return { badge: badge, pages: pages, pageCount: pageEls.length, heights: heights, labels: labels, breaks: document.querySelectorAll('#pdf-preview-sheet .pdf-break').length };
+      })()`);      if (!v || v.pages < 2) throw new Error('长简历预览页数应 >= 2: ' + JSON.stringify(v));
+      if (v.pageCount !== v.pages) throw new Error('页面卡片数应与页数一致: ' + JSON.stringify(v));
+      if (v.breaks !== 0) throw new Error('不应再有分页虚线: ' + JSON.stringify(v));
+      if (!v.heights.length || v.heights.some(function(h){ return Math.abs(h - 1122) > 4; })) throw new Error('每页高度应约为 A4（1122px）: ' + JSON.stringify(v.heights));
+      if (v.labels.length !== v.pages || v.labels[0].indexOf('第 1 页') < 0) throw new Error('页面标签异常: ' + JSON.stringify(v.labels));
       await click('[data-action="pdf-preview-close"]');
       await sleep(200);
       const closed = await ev('document.getElementById("pdf-preview").classList.contains("hidden")');

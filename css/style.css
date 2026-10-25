@@ -231,7 +231,9 @@ body.dark .rich-badge:hover{ background:#2b3d5c; }
 .pdf-preview-spacer{ flex:1; }
 .pdf-preview-scroll{ flex:1; overflow:auto; padding:28px 16px 60px; }
 .pdf-preview-sheet{ position:relative; width:210mm; margin:0 auto; }
-.pdf-preview-sheet .resume-page{ margin:0; box-shadow:0 8px 30px rgba(0,0,0,.35); }
-.pdf-break{ position:absolute; left:-12px; right:-12px; height:0; border-top:2px dashed #ef4444; pointer-events:none; }
-.pdf-break-label{ position:absolute; right:0; top:-9px; padding:1px 8px; background:#ef4444; color:#fff; font-size:11px; border-radius:0 0 4px 4px; }
+.pdf-page{ position:relative; width:210mm; margin:0 auto 24px; background:#fff; overflow:hidden; box-shadow:0 8px 30px rgba(0,0,0,.35); }
+.pdf-page:last-child{ margin-bottom:0; }
+.pdf-page-clip{ position:relative; width:100%; overflow:hidden; }
+.pdf-page .resume-page{ margin:0; box-shadow:none; }
+.pdf-page-label{ position:absolute; right:10px; bottom:6px; padding:0 6px; font-size:11px; color:#94a3b8; background:rgba(255,255,255,.85); border-radius:4px; }
 @media print{ .pdf-preview{ display:none !important; } }

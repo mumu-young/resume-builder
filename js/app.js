@@ -948,8 +948,9 @@
       titleColor: r.style.titleColor,
       lineColor: r.style.lineColor
     });
-    sheet.innerHTML = '<div class="resume-page" id="pdf-preview-page">' + html + '</div>';
-    var page = $('#pdf-preview-page');
+    sheet.innerHTML = '<div class="resume-page" id="pdf-measure"></div>';
+    var page = $('#pdf-measure');
+    page.innerHTML = html;
     page.style.setProperty('--tpl-fs', (parseInt(state.settings.fontSize, 10) || 14) + 'px');
     page.style.setProperty('--tpl-line-width', (r.style.showLines === false ? 0 : (r.style.lineWidth || 2)) + 'px');
     page.style.setProperty('--pad-top', (pad.top || 0) + 'mm');
@@ -957,28 +958,63 @@
     page.style.setProperty('--pad-bottom', (pad.bottom || 0) + 'mm');
     page.style.setProperty('--pad-left', (pad.left || 0) + 'mm');
     overlay.classList.remove('hidden');
-    requestAnimationFrame(function(){ updatePdfPages(); });
+    requestAnimationFrame(function(){ buildPdfPages(); });
   }
-  function updatePdfPages(){
+  function buildPdfPages(){
     var sheet = $('#pdf-preview-sheet');
-    var page = $('#pdf-preview-page');
-    if (!sheet || !page) return;
-    var olds = sheet.querySelectorAll('.pdf-break');
-    for (var i = 0; i < olds.length; i++) olds[i].parentNode.removeChild(olds[i]);
+    var measure = $('#pdf-measure');
+    if (!sheet || !measure) return;
     var mmPx = 96 / 25.4;
     var pageH = 297 * mmPx;
-    var total = Math.max(page.getBoundingClientRect().height, pageH);
+    var mRect = measure.getBoundingClientRect();
+    var total = Math.max(mRect.height, pageH);
     var pages = Math.max(1, Math.ceil((total - 1) / pageH));
-    sheet.style.height = Math.round(total) + 'px';
-    for (var n = 1; n < pages; n++){
-      var line = document.createElement('div');
-      line.className = 'pdf-break';
-      line.style.top = Math.round(pageH * n) + 'px';
-      var label = document.createElement('span');
-      label.className = 'pdf-break-label';
-      label.textContent = '第 ' + (n + 1) + ' 页';
-      line.appendChild(label);
-      sheet.appendChild(line);
+    var cands = [];
+    var nodes = measure.querySelectorAll('.tpl-section, .tpl-item, .tpl-header, .tpl-main-head, .tpl-skill, .tpl-profile, .tpl-extra, li');
+    for (var i = 0; i < nodes.length; i++){
+      var top = nodes[i].getBoundingClientRect().top - mRect.top;
+      if (top > 4 && top < total - 4) cands.push(top);
+    }
+    cands.sort(function(a, b){ return a - b; });
+    var breaks = [0];
+    for (var pIndex = 1; pIndex < pages; pIndex++){
+      var limit = pIndex * pageH;
+      var prev = breaks[breaks.length - 1];
+      var chosen = limit;
+      for (var ci = 0; ci < cands.length; ci++){
+        var t = cands[ci];
+        if (t > prev + 40 && t <= limit && t >= limit - 120) chosen = t;
+      }
+      if (total - chosen > pageH) chosen = limit;
+      if (chosen <= prev) chosen = limit;
+      breaks.push(chosen);
+    }
+    breaks.push(total);
+    var template = measure.cloneNode(true);
+    template.removeAttribute('id');
+    sheet.innerHTML = '';
+    for (var q = 0; q < pages; q++){
+      var start = breaks[q];
+      var end = breaks[q + 1];
+      var pageEl = document.createElement('div');
+      pageEl.className = 'pdf-page';
+      pageEl.style.height = Math.round(pageH) + 'px';
+      var clip = document.createElement('div');
+      clip.className = 'pdf-page-clip';
+      clip.style.height = Math.round(end - start) + 'px';
+      var clone = template.cloneNode(true);
+      clone.style.position = 'absolute';
+      clone.style.left = '0';
+      clone.style.top = (-Math.round(start)) + 'px';
+      clone.style.margin = '0';
+      clone.style.boxShadow = 'none';
+      clip.appendChild(clone);
+      pageEl.appendChild(clip);
+      var label = document.createElement('div');
+      label.className = 'pdf-page-label';
+      label.textContent = '第 ' + (q + 1) + ' 页 / 共 ' + pages + ' 页';
+      pageEl.appendChild(label);
+      sheet.appendChild(pageEl);
     }
     var badge = $('#pdf-page-count');
     if (badge) badge.textContent = '共 ' + pages + ' 页';
@@ -1407,7 +1443,7 @@
     document.addEventListener('click', onClick);
     window.addEventListener('resize', function(){
       var pp = $('#pdf-preview');
-      if (pp && !pp.classList.contains('hidden')) updatePdfPages();
+      if (pp && !pp.classList.contains('hidden')) openPdfPreview();
     });
     window.addEventListener('beforeunload', function(){ if (state.dirty) flushSave(); });
     document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'hidden' && state.dirty) flushSave(); });
@@ -1452,7 +1488,7 @@
     resetAllData: resetAllData,
     flushSave: flushSave,
     exportPdf: exportPdf,
-    pdfPreview: { open: openPdfPreview, update: updatePdfPages, close: closePdfPreview, save: savePdfFromPreview },
+    pdfPreview: { open: openPdfPreview, update: buildPdfPages, close: closePdfPreview, save: savePdfFromPreview },
     openModal: openModal,
     closeModal: closeModal,
     submitModal: submitModal,
