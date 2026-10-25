@@ -991,17 +991,60 @@ const { test, runAll } = require('../lib/suite');
       if (now !== switched.picked) throw new Error('删除后切换简历失败: ' + now + ' vs ' + switched.picked);
     });
 
-    test('问题49 导出 PDF 走桌面接口（模拟验证）', async () => {
+        test('问题49 导出 PDF 先打开预览页，保存时调用桌面接口', async () => {
       await ev('__APP__.resetAllData()', true);
       await sleep(300);
       await ev('__APP__.renameResume("张三简历")');
       await goModule('export');
       await ev(`(() => { window.__pdfCall = null; window.desktopAPI = { isDesktop: true, exportPDF: function(name){ window.__pdfCall = name; return Promise.resolve({ ok: true }); } }; return true; })()`);
       await click('[data-action="export-pdf"]');
-      await sleep(300);
+      await sleep(400);
+      const shown = await ev('!document.getElementById("pdf-preview").classList.contains("hidden")');
+      if (!shown) throw new Error('点击导出 PDF 后未打开预览页');
+      const count = await ev('document.getElementById("pdf-page-count").textContent');
+      if (!/共 \d+ 页/.test(count)) throw new Error('预览页未显示页数: ' + count);
+      const calledBefore = await ev('window.__pdfCall');
+      if (calledBefore !== null) throw new Error('仅打开预览时不应立即导出');
+      await click('[data-action="pdf-preview-save"]');
+      await sleep(400);
       const called = await ev('window.__pdfCall');
-      if (called !== '张三简历.pdf') throw new Error('未按简历名调用桌面 PDF 导出: ' + called);
+      if (called !== '张三简历.pdf') throw new Error('保存时未按简历名调用桌面导出: ' + called);
+      const closed = await ev('document.getElementById("pdf-preview").classList.contains("hidden")');
+      if (!closed) throw new Error('保存后预览页未关闭');
       await ev('delete window.desktopAPI');
+    });
+
+
+    test('问题50 PDF 预览可显示多页与分页虚线', async () => {
+      await ev('__APP__.resetAllData()', true);
+      await sleep(300);
+      await ev(`(() => {
+        for (let i = 0; i < 8; i++){
+          __APP__.addEntry('work');
+          __APP__.setByPath('work.' + i + '.company', '公司' + (i + 1));
+          __APP__.setByPath('work.' + i + '.position', '高级前端工程师');
+          __APP__.setByPath('work.' + i + '.description', ['负责核心业务系统开发','优化性能提升 50%','带领 5 人小组完成交付','沉淀组件库与规范'].join(String.fromCharCode(10)));
+        }
+        __APP__.afterChange(); __APP__.renderPreview();
+        return true;
+      })()`);
+      await sleep(400);
+      await goModule('export');
+      await click('[data-action="export-pdf"]');
+      await sleep(600);
+      const v = await ev(`(() => {
+        const badge = document.getElementById('pdf-page-count').textContent;
+        const m = badge.match(/共 (\\d+) 页/);
+        const pages = m ? parseInt(m[1], 10) : 0;
+        return { badge: badge, pages: pages, breaks: document.querySelectorAll('#pdf-preview-sheet .pdf-break').length, sheetHeight: document.getElementById('pdf-preview-sheet').getBoundingClientRect().height };
+      })()`);
+      if (!v || v.pages < 2) throw new Error('长简历预览页数应 >= 2: ' + JSON.stringify(v));
+      if (v.breaks !== v.pages - 1) throw new Error('分页虚线条数应等于页数-1: ' + JSON.stringify(v));
+      if (!(v.sheetHeight > 1100)) throw new Error('预览页高度异常: ' + JSON.stringify(v));
+      await click('[data-action="pdf-preview-close"]');
+      await sleep(200);
+      const closed = await ev('document.getElementById("pdf-preview").classList.contains("hidden")');
+      if (!closed) throw new Error('取消后预览页未关闭');
     });
 
     await runAll();

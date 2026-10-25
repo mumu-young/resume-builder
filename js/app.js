@@ -464,7 +464,7 @@
       field('新简历默认模板', selectEl('data-spath="defaultTemplate"', s.defaultTemplate, TEMPLATES.map(function(t){ return [t.id, t.name]; }))) +
       '</div></div>' +
       '<div class="tool-card"><h4>关于</h4>' +
-      '<p>简历工坊 v1.1.1 ｜ 纯本地运行：无登录、无联网、无云存储。数据仅保存在本机浏览器中。</p></div>';
+      '<p>简历工坊 v1.1.2 ｜ 纯本地运行：无登录、无联网、无云存储。数据仅保存在本机浏览器中。</p></div>';
   }
   function renderModule(){
     var el = $('#editor');
@@ -931,12 +931,68 @@
     setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1500);
     showToast('备份已导出');
   }
-  function exportPdf(){
+  function openPdfPreview(){
+    var r = current();
+    if (!r) return;
+    var overlay = $('#pdf-preview');
+    var sheet = $('#pdf-preview-sheet');
+    if (!overlay || !sheet) return;
+    var t = getTemplate(r.templateId);
+    setRichMap(r.rich || {});
+    var pad = r.templateId === 'open'
+      ? { top: 0, right: 0, bottom: 0, left: 0 }
+      : (r.style.pagePadding || { top: 10, right: 12, bottom: 10, left: 12 });
+    var html = t.render(r.data, {
+      sectionOrder: r.sectionOrder,
+      sectionTitles: r.sectionTitles,
+      titleColor: r.style.titleColor,
+      lineColor: r.style.lineColor
+    });
+    sheet.innerHTML = '<div class="resume-page" id="pdf-preview-page">' + html + '</div>';
+    var page = $('#pdf-preview-page');
+    page.style.setProperty('--tpl-fs', (parseInt(state.settings.fontSize, 10) || 14) + 'px');
+    page.style.setProperty('--tpl-line-width', (r.style.showLines === false ? 0 : (r.style.lineWidth || 2)) + 'px');
+    page.style.setProperty('--pad-top', (pad.top || 0) + 'mm');
+    page.style.setProperty('--pad-right', (pad.right || 0) + 'mm');
+    page.style.setProperty('--pad-bottom', (pad.bottom || 0) + 'mm');
+    page.style.setProperty('--pad-left', (pad.left || 0) + 'mm');
+    overlay.classList.remove('hidden');
+    requestAnimationFrame(function(){ updatePdfPages(); });
+  }
+  function updatePdfPages(){
+    var sheet = $('#pdf-preview-sheet');
+    var page = $('#pdf-preview-page');
+    if (!sheet || !page) return;
+    var olds = sheet.querySelectorAll('.pdf-break');
+    for (var i = 0; i < olds.length; i++) olds[i].parentNode.removeChild(olds[i]);
+    var mmPx = 96 / 25.4;
+    var pageH = 297 * mmPx;
+    var total = Math.max(page.getBoundingClientRect().height, pageH);
+    var pages = Math.max(1, Math.ceil((total - 1) / pageH));
+    sheet.style.height = Math.round(total) + 'px';
+    for (var n = 1; n < pages; n++){
+      var line = document.createElement('div');
+      line.className = 'pdf-break';
+      line.style.top = Math.round(pageH * n) + 'px';
+      var label = document.createElement('span');
+      label.className = 'pdf-break-label';
+      label.textContent = '第 ' + (n + 1) + ' 页';
+      line.appendChild(label);
+      sheet.appendChild(line);
+    }
+    var badge = $('#pdf-page-count');
+    if (badge) badge.textContent = '共 ' + pages + ' 页';
+  }
+  function closePdfPreview(){
+    var overlay = $('#pdf-preview');
+    if (overlay) overlay.classList.add('hidden');
+  }
+  function savePdfFromPreview(){
     var r = current();
     var name = ((r && r.title) || '简历') + '.pdf';
     if (window.desktopAPI && typeof window.desktopAPI.exportPDF === 'function'){
       window.desktopAPI.exportPDF(name).then(function(res){
-        if (res && res.ok) showToast('PDF 已导出');
+        if (res && res.ok){ closePdfPreview(); showToast('PDF 已导出'); }
         else if (res && res.error) alert('导出 PDF 失败：' + res.error);
       }).catch(function(err){
         alert('导出 PDF 失败：' + (err && err.message ? err.message : err));
@@ -945,6 +1001,7 @@
     }
     window.print();
   }
+  function exportPdf(){ openPdfPreview(); }
   function exportWord(){
     var r = current();
     if (!r) return;
@@ -1114,7 +1171,11 @@
     }
     document.addEventListener('keydown', function(e){
       var mm = $('#modal-mask');
-      if (e.key === 'Escape' && mm && !mm.classList.contains('hidden')) closeModal();
+      if (e.key === 'Escape'){
+        if (mm && !mm.classList.contains('hidden')) { closeModal(); return; }
+        var pp = $('#pdf-preview');
+        if (pp && !pp.classList.contains('hidden')) closePdfPreview();
+      }
     });
     var sw = $('#preview-switch');
     if (sw) sw.checked = state.previewVisible;
@@ -1198,6 +1259,8 @@
       case 'set-line-width': setLineWidth(parseInt(btn.getAttribute('data-width'), 10) || 2); break;
       case 'reset-section-style': resetSectionStyle(); break;
       case 'export-pdf': exportPdf(); break;
+      case 'pdf-preview-save': savePdfFromPreview(); break;
+      case 'pdf-preview-close': closePdfPreview(); break;
       case 'export-word': exportWord(); break;
       case 'export-backup': exportBackup(); break;
       case 'pick-import': $('#import-file').click(); break;
@@ -1331,13 +1394,21 @@
     }
     document.addEventListener('keydown', function(e){
       var mm = $('#modal-mask');
-      if (e.key === 'Escape' && mm && !mm.classList.contains('hidden')) closeModal();
+      if (e.key === 'Escape'){
+        if (mm && !mm.classList.contains('hidden')) { closeModal(); return; }
+        var pp = $('#pdf-preview');
+        if (pp && !pp.classList.contains('hidden')) closePdfPreview();
+      }
     });
     var sw = $('#preview-switch');
     if (sw) sw.addEventListener('change', function(){ togglePreview(); });
     $('#import-file').addEventListener('change', onImportFile);
     $('#photo-file').addEventListener('change', onPhotoFile);
     document.addEventListener('click', onClick);
+    window.addEventListener('resize', function(){
+      var pp = $('#pdf-preview');
+      if (pp && !pp.classList.contains('hidden')) updatePdfPages();
+    });
     window.addEventListener('beforeunload', function(){ if (state.dirty) flushSave(); });
     document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'hidden' && state.dirty) flushSave(); });
   }
@@ -1381,6 +1452,7 @@
     resetAllData: resetAllData,
     flushSave: flushSave,
     exportPdf: exportPdf,
+    pdfPreview: { open: openPdfPreview, update: updatePdfPages, close: closePdfPreview, save: savePdfFromPreview },
     openModal: openModal,
     closeModal: closeModal,
     submitModal: submitModal,

@@ -63,6 +63,19 @@
   <button type="button" class="btn btn-primary" data-action="rich-bold"><b>B</b> 加粗</button>
   <button type="button" class="btn" data-action="rich-unbold">取消加粗</button>
 </div>
+<div id="pdf-preview" class="pdf-preview hidden">
+  <div class="pdf-preview-bar">
+    <span class="pdf-preview-title">PDF 预览</span>
+    <span id="pdf-page-count" class="pdf-page-count">共 1 页</span>
+    <span class="pdf-preview-spacer"></span>
+    <span class="pdf-preview-tip">红色虚线为分页位置</span>
+    <button type="button" class="btn" data-action="pdf-preview-close">取消</button>
+    <button type="button" class="btn btn-primary" data-action="pdf-preview-save">保存 PDF</button>
+  </div>
+  <div id="pdf-preview-scroll" class="pdf-preview-scroll">
+    <div id="pdf-preview-sheet" class="pdf-preview-sheet"></div>
+  </div>
+</div>
 <div id="modal-mask" class="modal-mask hidden">
   <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <h3 id="modal-title" class="modal-title"></h3>

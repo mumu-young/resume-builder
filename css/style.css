@@ -220,3 +220,18 @@ body.dark .rich-badge:hover{ background:#2b3d5c; }
 .modal-input:focus{ outline:2px solid var(--accent); outline-offset:1px; }
 .modal-actions{ display:flex; justify-content:flex-end; gap:8px; }
 @media print{ .modal-mask{ display:none !important; } }
+
+/* ===== PDF 预览（导出前查看页数与分页） ===== */
+.pdf-preview{ position:fixed; inset:0; z-index:1100; background:#334155; display:flex; flex-direction:column; }
+.pdf-preview.hidden{ display:none !important; }
+.pdf-preview-bar{ display:flex; align-items:center; gap:10px; padding:10px 16px; background:var(--panel); border-bottom:1px solid var(--border); }
+.pdf-preview-title{ font-weight:700; }
+.pdf-page-count{ padding:2px 10px; border-radius:999px; background:var(--accent-soft); color:var(--accent-strong); font-size:12px; font-weight:700; }
+.pdf-preview-tip{ color:var(--muted); font-size:12px; }
+.pdf-preview-spacer{ flex:1; }
+.pdf-preview-scroll{ flex:1; overflow:auto; padding:28px 16px 60px; }
+.pdf-preview-sheet{ position:relative; width:210mm; margin:0 auto; }
+.pdf-preview-sheet .resume-page{ margin:0; box-shadow:0 8px 30px rgba(0,0,0,.35); }
+.pdf-break{ position:absolute; left:-12px; right:-12px; height:0; border-top:2px dashed #ef4444; pointer-events:none; }
+.pdf-break-label{ position:absolute; right:0; top:-9px; padding:1px 8px; background:#ef4444; color:#fff; font-size:11px; border-radius:0 0 4px 4px; }
+@media print{ .pdf-preview{ display:none !important; } }

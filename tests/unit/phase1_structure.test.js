@@ -56,4 +56,11 @@ test('应用内弹窗结构存在，且不再使用原生 prompt/confirm', () =>
   ok(!/\bconfirm\s*\(/.test(appJs), 'app.js 仍在使用 confirm()（与桌面版交互冲突）');
   ok(appJs.includes('exportPdf') && appJs.includes('desktopAPI'), '缺少桌面版 PDF 导出通道');
 });
+test('PDF 预览层结构存在（页数与分页提示）', () => {
+  ok(indexHtml.includes('id="pdf-preview"'), '缺少 PDF 预览层');
+  ok(indexHtml.includes('id="pdf-page-count"'), '缺少页数显示');
+  ok(indexHtml.includes('data-action="pdf-preview-save"'), '缺少保存 PDF 按钮');
+  ok(indexHtml.includes('data-action="pdf-preview-close"'), '缺少关闭预览按钮');
+  ok(appJs.includes('updatePdfPages') && appJs.includes('pdf-break'), '缺少页数与分页计算逻辑');
+});
 runAll();
