@@ -1047,6 +1047,34 @@ const { test, runAll } = require('../lib/suite');
       if (!closed) throw new Error('取消后预览页未关闭');
     });
 
+    test('问题51 开放两栏：荣誉证书显示在左侧蓝色栏', async () => {
+      await ev('__APP__.resetAllData()', true);
+      await sleep(300);
+      await goModule('honors');
+      await click('[data-action="add-entry"][data-type="honor"]');
+      await setInput('input[data-path="honors.items.0.title"]', '国家奖学金');
+      await setInput('textarea[data-path="honors.extra"]', '英语：CET-6');
+      await sleep(300);
+      await goModule('templates');
+      await click('[data-action="apply-template"][data-id="open"]');
+      await sleep(400);
+      const v = await ev(`(() => {
+        const side = document.querySelector('.tpl-open-side');
+        const main = document.querySelector('.tpl-open-main');
+        if (!side || !main) return null;
+        return {
+          sideHasHonor: side.textContent.indexOf('荣誉证书') >= 0 && side.textContent.indexOf('国家奖学金') >= 0,
+          sideItems: side.querySelectorAll('.op-honor-item').length,
+          mainHasHonor: main.textContent.indexOf('荣誉证书') >= 0,
+          mainHasExtra: main.textContent.indexOf('CET-6') >= 0
+        };
+      })()`);
+      if (!v) throw new Error('未找到开放两栏结构');
+      if (!v.sideHasHonor || v.sideItems < 1) throw new Error('荣誉证书未显示在左栏: ' + JSON.stringify(v));
+      if (v.mainHasHonor) throw new Error('右栏不应再显示荣誉证书');
+      if (!v.mainHasExtra) throw new Error('右栏应保留其他信息');
+    });
+
     await runAll();
   } finally {
     await b.close();

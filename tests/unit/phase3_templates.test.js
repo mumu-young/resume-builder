@@ -437,4 +437,20 @@ test('9 套模板的可编辑字段都带 data-field 标识', () => {
     ok(html.indexOf('data-field="basic.name"') >= 0, t.id + ' 缺少姓名字段标识');
   }
 });
+test('开放两栏：荣誉证书固定在左栏，其他信息保留在右栏', () => {
+  const html = ctx.getTemplate('open').render(d);
+  const side = html.slice(html.indexOf('<aside class="tpl-open-side">'), html.indexOf('<main class="tpl-open-main">'));
+  const main = html.slice(html.indexOf('<main class="tpl-open-main">'));
+  ok(side.indexOf('荣誉证书') >= 0, '左栏缺少荣誉证书标题');
+  ok(side.indexOf('国家奖学金') >= 0, '左栏缺少荣誉条目');
+  ok(side.indexOf('op-honor-item') >= 0, '缺少左栏荣誉条目样式类');
+  ok(main.indexOf('荣誉证书') === -1, '右栏不应再出现荣誉证书');
+  ok(main.indexOf('其他信息') >= 0 && main.indexOf('CET-6') >= 0, '右栏应保留其他信息');
+});
+test('开放两栏：荣誉证书标题可自定义', () => {
+  const html = ctx.getTemplate('open').render(d, { sectionTitles: { honors: '奖项荣誉' } });
+  const side = html.slice(html.indexOf('<aside class="tpl-open-side">'), html.indexOf('<main class="tpl-open-main">'));
+  ok(side.indexOf('奖项荣誉') >= 0, '自定义荣誉标题未生效');
+  ok(side.indexOf('荣誉证书') === -1, '默认荣誉标题应被替换');
+});
 runAll();

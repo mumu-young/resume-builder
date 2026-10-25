@@ -149,11 +149,7 @@ function secSkillsHTML(d, title, headFn){
   }).join('');
   return '<section class="tpl-section">' + (headFn || defaultSectionHead)(title || DEFAULT_SECTION_TITLES.skills) + items + '</section>';
 }
-function secHonorsHTML(d, t, headFn){
-  t = t || {};
-  var title = t.honors;
-  var extraTitle = t.extra;
-  var html = '';
+function secHonorsItemsHTML(d, title, headFn){
   var items = d.honors.items.map(function(h, idx){
     var p = 'honors.' + idx + '.';
     var yr = h.year ? '（' + rf(p + 'year', h.year) + '）' : '';
@@ -161,12 +157,17 @@ function secHonorsHTML(d, t, headFn){
       '<span class="tpl-item-title">' + rf(p + 'title', h.title || '荣誉/证书') + yr + '</span></div>' +
       (h.description ? '<div class="tpl-item-sub">' + rf(p + 'desc', h.description) + '</div>' : '') + '</div>';
   }).join('');
-  if (items) html += '<section class="tpl-section">' + (headFn || defaultSectionHead)(title || DEFAULT_SECTION_TITLES.honors) + items + '</section>';
-  if (d.honors.extra && d.honors.extra.trim()) {
-    html += '<section class="tpl-section">' + (headFn || defaultSectionHead)(extraTitle || DEFAULT_SECTION_TITLES.extra) +
-      '<p class="tpl-extra">' + rf('honors.extra', d.honors.extra) + '</p></section>';
-  }
-  return html;
+  if (!items) return '';
+  return '<section class="tpl-section">' + (headFn || defaultSectionHead)(title || DEFAULT_SECTION_TITLES.honors) + items + '</section>';
+}
+function secExtraHTML(d, title, headFn){
+  if (!d.honors.extra || !d.honors.extra.trim()) return '';
+  return '<section class="tpl-section">' + (headFn || defaultSectionHead)(title || DEFAULT_SECTION_TITLES.extra) +
+    '<p class="tpl-extra">' + rf('honors.extra', d.honors.extra) + '</p></section>';
+}
+function secHonorsHTML(d, t, headFn){
+  t = t || {};
+  return secHonorsItemsHTML(d, t.honors, headFn) + secExtraHTML(d, t.extra, headFn);
 }
 function secProfileHTML(d, title, headFn){
   var text = d.profile;
@@ -177,18 +178,19 @@ function secProfileHTML(d, title, headFn){
 function defaultSectionHead(title){
   return '<h2 class="tpl-h2">' + esc(title) + '</h2>';
 }
+function sectionHTMLFor(d, id, titles, headFn){
+  if (id === 'education') return secEducationHTML(d, titles.education, headFn);
+  if (id === 'work') return secWorkHTML(d, titles.work, headFn);
+  if (id === 'projects') return secProjectsHTML(d, titles.projects, headFn);
+  if (id === 'skills') return secSkillsHTML(d, titles.skills, headFn);
+  if (id === 'honors') return secHonorsHTML(d, { honors: titles.honors, extra: titles.extra }, headFn);
+  if (id === 'profile') return secProfileHTML(d, titles.profile, headFn);
+  return '';
+}
 function orderedSectionsHTML(d, order, titles, headFn){
   headFn = headFn || defaultSectionHead;
-  var map = {
-    education: secEducationHTML(d, titles.education, headFn),
-    work: secWorkHTML(d, titles.work, headFn),
-    projects: secProjectsHTML(d, titles.projects, headFn),
-    skills: secSkillsHTML(d, titles.skills, headFn),
-    honors: secHonorsHTML(d, { honors: titles.honors, extra: titles.extra }, headFn),
-    profile: secProfileHTML(d, titles.profile, headFn)
-  };
   var html = '';
-  (order || DEFAULT_SECTION_ORDER).forEach(function(id){ if (map[id]) html += map[id]; });
+  (order || DEFAULT_SECTION_ORDER).forEach(function(id){ html += sectionHTMLFor(d, id, titles, headFn); });
   return html;
 }
 function renderClean(d, opts){
@@ -317,6 +319,19 @@ function openSectionHead(title){
 function openSideHead(title){
   return '<div class="op-side-h">' + esc(title) + '</div>';
 }
+function opSideHonorsHTML(d, titles){
+  if (!d.honors.items.length) return '';
+  var html = openSideHead(titles.honors || DEFAULT_SECTION_TITLES.honors);
+  d.honors.items.forEach(function(h, idx){
+    var p = 'honors.' + idx + '.';
+    var yr = h.year ? '（' + rf(p + 'year', h.year) + '）' : '';
+    html += '<div class="op-honor-item">' +
+      '<div class="op-honor-title">' + rf(p + 'title', h.title || '荣誉/证书') + yr + '</div>' +
+      (h.description ? '<div class="op-honor-desc">' + rf(p + 'desc', h.description) + '</div>' : '') +
+      '</div>';
+  });
+  return html;
+}
 function renderOpen(d, opts){
   opts = opts || {};
   var b = d.basic || {};
@@ -343,9 +358,13 @@ function renderOpen(d, opts){
         '</div>';
     });
   }
+  side += opSideHonorsHTML(d, titles);
   var main = '';
-  var order = (opts.sectionOrder || DEFAULT_SECTION_ORDER).filter(function(id){ return id !== 'education'; });
-  main += orderedSectionsHTML(d, order, titles, openSectionHead);
+  (opts.sectionOrder || DEFAULT_SECTION_ORDER).forEach(function(id){
+    if (id === 'education') return;
+    if (id === 'honors'){ main += secExtraHTML(d, titles.extra, openSectionHead); return; }
+    main += sectionHTMLFor(d, id, titles, openSectionHead);
+  });
   return '<div class="tpl tpl-open"' + templateStyle(opts) + '><div class="tpl-open-grid">' +
     '<aside class="tpl-open-side">' + side + '</aside>' +
     '<main class="tpl-open-main">' + main + '</main></div></div>';

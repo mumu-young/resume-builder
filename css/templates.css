@@ -180,3 +180,8 @@
 .resume-page .rf{ display:inline; }
 .resume-page .rf-b{ font-weight:700; }
 .resume-page ::selection{ background:rgba(37,99,235,.25); }
+
+/* 开放两栏：左栏荣誉证书 */
+.tpl-open-side .op-honor-item{ margin:6px 0 10px; font-size:calc(var(--tpl-fs, 14px) - 1px); color:rgba(255,255,255,.92); }
+.tpl-open-side .op-honor-title{ font-weight:600; }
+.tpl-open-side .op-honor-desc{ color:rgba(255,255,255,.75); font-size:calc(var(--tpl-fs, 14px) - 2px); margin-top:1px; }
