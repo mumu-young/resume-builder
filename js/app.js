@@ -931,103 +931,72 @@
     setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1500);
     showToast('备份已导出');
   }
+  var pdfPreviewState = { base64: null, url: null };
+  function countPdfPages(base64){
+    try {
+      var bin = atob(base64);
+      var m = bin.match(/\/Type\s*\/Page[^s]/g);
+      return m ? m.length : 0;
+    } catch (e) { return 0; }
+  }
+  function setPdfPreviewStatus(text, show){
+    var st = $('#pdf-preview-status');
+    if (!st) return;
+    st.textContent = text || '';
+    st.classList.toggle('hidden', !show);
+  }
   function openPdfPreview(){
     var r = current();
     if (!r) return;
+    if (!(window.desktopAPI && typeof window.desktopAPI.previewPDF === 'function')){
+      window.print();
+      return;
+    }
     var overlay = $('#pdf-preview');
-    var sheet = $('#pdf-preview-sheet');
-    if (!overlay || !sheet) return;
-    var t = getTemplate(r.templateId);
-    setRichMap(r.rich || {});
-    var pad = r.templateId === 'open'
-      ? { top: 0, right: 0, bottom: 0, left: 0 }
-      : (r.style.pagePadding || { top: 10, right: 12, bottom: 10, left: 12 });
-    var html = t.render(r.data, {
-      sectionOrder: r.sectionOrder,
-      sectionTitles: r.sectionTitles,
-      titleColor: r.style.titleColor,
-      lineColor: r.style.lineColor
-    });
-    sheet.innerHTML = '<div class="resume-page" id="pdf-measure"></div>';
-    var page = $('#pdf-measure');
-    page.innerHTML = html;
-    page.style.setProperty('--tpl-fs', (parseInt(state.settings.fontSize, 10) || 14) + 'px');
-    page.style.setProperty('--tpl-line-width', (r.style.showLines === false ? 0 : (r.style.lineWidth || 2)) + 'px');
-    page.style.setProperty('--pad-top', (pad.top || 0) + 'mm');
-    page.style.setProperty('--pad-right', (pad.right || 0) + 'mm');
-    page.style.setProperty('--pad-bottom', (pad.bottom || 0) + 'mm');
-    page.style.setProperty('--pad-left', (pad.left || 0) + 'mm');
-    overlay.classList.remove('hidden');
-    requestAnimationFrame(function(){ buildPdfPages(); });
-  }
-  function buildPdfPages(){
-    var sheet = $('#pdf-preview-sheet');
-    var measure = $('#pdf-measure');
-    if (!sheet || !measure) return;
-    var mmPx = 96 / 25.4;
-    var pageH = 297 * mmPx;
-    var mRect = measure.getBoundingClientRect();
-    var total = Math.max(mRect.height, pageH);
-    var pages = Math.max(1, Math.ceil((total - 1) / pageH));
-    var cands = [];
-    var nodes = measure.querySelectorAll('.tpl-section, .tpl-item, .tpl-header, .tpl-main-head, .tpl-skill, .tpl-profile, .tpl-extra, li');
-    for (var i = 0; i < nodes.length; i++){
-      var top = nodes[i].getBoundingClientRect().top - mRect.top;
-      if (top > 4 && top < total - 4) cands.push(top);
-    }
-    cands.sort(function(a, b){ return a - b; });
-    var breaks = [0];
-    for (var pIndex = 1; pIndex < pages; pIndex++){
-      var limit = pIndex * pageH;
-      var prev = breaks[breaks.length - 1];
-      var chosen = limit;
-      for (var ci = 0; ci < cands.length; ci++){
-        var t = cands[ci];
-        if (t > prev + 40 && t <= limit && t >= limit - 120) chosen = t;
-      }
-      if (total - chosen > pageH) chosen = limit;
-      if (chosen <= prev) chosen = limit;
-      breaks.push(chosen);
-    }
-    breaks.push(total);
-    var template = measure.cloneNode(true);
-    template.removeAttribute('id');
-    sheet.innerHTML = '';
-    for (var q = 0; q < pages; q++){
-      var start = breaks[q];
-      var end = breaks[q + 1];
-      var pageEl = document.createElement('div');
-      pageEl.className = 'pdf-page';
-      pageEl.style.height = Math.round(pageH) + 'px';
-      var clip = document.createElement('div');
-      clip.className = 'pdf-page-clip';
-      clip.style.height = Math.round(end - start) + 'px';
-      var clone = template.cloneNode(true);
-      clone.style.position = 'absolute';
-      clone.style.left = '0';
-      clone.style.top = (-Math.round(start)) + 'px';
-      clone.style.margin = '0';
-      clone.style.boxShadow = 'none';
-      clip.appendChild(clone);
-      pageEl.appendChild(clip);
-      var label = document.createElement('div');
-      label.className = 'pdf-page-label';
-      label.textContent = '第 ' + (q + 1) + ' 页 / 共 ' + pages + ' 页';
-      pageEl.appendChild(label);
-      sheet.appendChild(pageEl);
-    }
+    var frame = $('#pdf-preview-frame');
+    if (!overlay || !frame) return;
+    if (pdfPreviewState.url){ try { URL.revokeObjectURL(pdfPreviewState.url); } catch (e) {} pdfPreviewState.url = null; }
+    pdfPreviewState.base64 = null;
+    frame.removeAttribute('src');
+    frame.classList.add('hidden');
+    setPdfPreviewStatus('正在生成 PDF 预览…', true);
     var badge = $('#pdf-page-count');
-    if (badge) badge.textContent = '共 ' + pages + ' 页';
+    if (badge) badge.textContent = '共 - 页';
+    overlay.classList.remove('hidden');
+    window.desktopAPI.previewPDF().then(function(res){
+      if (!res || !res.ok || !res.base64){
+        setPdfPreviewStatus('生成 PDF 预览失败：' + ((res && res.error) || '未知错误'), true);
+        return;
+      }
+      pdfPreviewState.base64 = res.base64;
+      var bin = atob(res.base64);
+      var len = bin.length;
+      var bytes = new Uint8Array(len);
+      for (var i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+      var blob = new Blob([bytes], { type: 'application/pdf' });
+      pdfPreviewState.url = URL.createObjectURL(blob);
+      frame.src = pdfPreviewState.url;
+      frame.classList.remove('hidden');
+      setPdfPreviewStatus('', false);
+      var pages = countPdfPages(res.base64);
+      if (badge) badge.textContent = pages > 0 ? ('共 ' + pages + ' 页') : 'PDF 预览';
+    }).catch(function(err){
+      setPdfPreviewStatus('生成 PDF 预览失败：' + (err && err.message ? err.message : err), true);
+    });
   }
   function closePdfPreview(){
     var overlay = $('#pdf-preview');
     if (overlay) overlay.classList.add('hidden');
+    var frame = $('#pdf-preview-frame');
+    if (frame){ frame.removeAttribute('src'); frame.classList.add('hidden'); }
+    if (pdfPreviewState.url){ try { URL.revokeObjectURL(pdfPreviewState.url); } catch (e) {} pdfPreviewState.url = null; }
+    pdfPreviewState.base64 = null;
   }
   function savePdfFromPreview(){
     var r = current();
     var name = ((r && r.title) || '简历') + '.pdf';
-    if (window.desktopAPI && typeof window.desktopAPI.exportPDF === 'function'){
-      window.desktopAPI.exportPDF(name).then(function(res){
+    if (window.desktopAPI && typeof window.desktopAPI.savePDF === 'function' && pdfPreviewState.base64){
+      window.desktopAPI.savePDF(pdfPreviewState.base64, name).then(function(res){
         if (res && res.ok){ closePdfPreview(); showToast('PDF 已导出'); }
         else if (res && res.error) alert('导出 PDF 失败：' + res.error);
       }).catch(function(err){
@@ -1441,10 +1410,6 @@
     $('#import-file').addEventListener('change', onImportFile);
     $('#photo-file').addEventListener('change', onPhotoFile);
     document.addEventListener('click', onClick);
-    window.addEventListener('resize', function(){
-      var pp = $('#pdf-preview');
-      if (pp && !pp.classList.contains('hidden')) openPdfPreview();
-    });
     window.addEventListener('beforeunload', function(){ if (state.dirty) flushSave(); });
     document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'hidden' && state.dirty) flushSave(); });
   }
@@ -1488,7 +1453,7 @@
     resetAllData: resetAllData,
     flushSave: flushSave,
     exportPdf: exportPdf,
-    pdfPreview: { open: openPdfPreview, update: buildPdfPages, close: closePdfPreview, save: savePdfFromPreview },
+    pdfPreview: { open: openPdfPreview, close: closePdfPreview, save: savePdfFromPreview },
     openModal: openModal,
     closeModal: closeModal,
     submitModal: submitModal,

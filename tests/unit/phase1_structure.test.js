@@ -61,6 +61,7 @@ test('PDF 预览层结构存在（页数与分页提示）', () => {
   ok(indexHtml.includes('id="pdf-page-count"'), '缺少页数显示');
   ok(indexHtml.includes('data-action="pdf-preview-save"'), '缺少保存 PDF 按钮');
   ok(indexHtml.includes('data-action="pdf-preview-close"'), '缺少关闭预览按钮');
-  ok(appJs.includes('buildPdfPages') && appJs.includes('pdf-page'), '缺少分页渲染逻辑');
+  ok(appJs.includes('previewPDF') && appJs.includes('savePDF'), '缺少桌面版 PDF 预览/保存接口');
+  ok(indexHtml.includes('id="pdf-preview-frame"'), '缺少 PDF 内嵌预览容器');
 });
 runAll();

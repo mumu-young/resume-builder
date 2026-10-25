@@ -991,64 +991,69 @@ const { test, runAll } = require('../lib/suite');
       if (now !== switched.picked) throw new Error('删除后切换简历失败: ' + now + ' vs ' + switched.picked);
     });
 
-        test('问题49 导出 PDF 先打开预览页，保存时调用桌面接口', async () => {
+        test('问题49 导出 PDF 打开真实 PDF 预览，保存时调用桌面接口', async () => {
       await ev('__APP__.resetAllData()', true);
       await sleep(300);
       await ev('__APP__.renameResume("张三简历")');
       await goModule('export');
-      await ev(`(() => { window.__pdfCall = null; window.desktopAPI = { isDesktop: true, exportPDF: function(name){ window.__pdfCall = name; return Promise.resolve({ ok: true }); } }; return true; })()`);
+      await ev(`(() => {
+        window.__pdfSave = null;
+        const fake = '%PDF-1.4 1 0 obj << /Type /Page >> endobj 2 0 obj << /Type /Page >> endobj ';
+        window.__pdfB64 = btoa(fake);
+        window.desktopAPI = {
+          isDesktop: true,
+          previewPDF: function(){ return Promise.resolve({ ok: true, base64: window.__pdfB64 }); },
+          savePDF: function(b64, name){ window.__pdfSave = name; return Promise.resolve({ ok: true }); }
+        };
+        return true;
+      })()`);
       await click('[data-action="export-pdf"]');
-      await sleep(400);
+      await sleep(700);
       const shown = await ev('!document.getElementById("pdf-preview").classList.contains("hidden")');
       if (!shown) throw new Error('点击导出 PDF 后未打开预览页');
+      const frameSrc = await ev('document.getElementById("pdf-preview-frame").getAttribute("src") || ""');
+      if (frameSrc.indexOf('blob:') !== 0) throw new Error('预览未加载真实 PDF 数据: ' + frameSrc);
       const count = await ev('document.getElementById("pdf-page-count").textContent');
-      if (!/共 \d+ 页/.test(count)) throw new Error('预览页未显示页数: ' + count);
-      const calledBefore = await ev('window.__pdfCall');
-      if (calledBefore !== null) throw new Error('仅打开预览时不应立即导出');
+      if (count !== '共 2 页') throw new Error('页数未按 PDF 实际页数显示: ' + count);
+      const calledBefore = await ev('window.__pdfSave');
+      if (calledBefore !== null) throw new Error('仅打开预览时不应保存');
       await click('[data-action="pdf-preview-save"]');
       await sleep(400);
-      const called = await ev('window.__pdfCall');
-      if (called !== '张三简历.pdf') throw new Error('保存时未按简历名调用桌面导出: ' + called);
+      const saved = await ev('window.__pdfSave');
+      if (saved !== '张三简历.pdf') throw new Error('保存时未按简历名调用桌面接口: ' + saved);
       const closed = await ev('document.getElementById("pdf-preview").classList.contains("hidden")');
       if (!closed) throw new Error('保存后预览页未关闭');
       await ev('delete window.desktopAPI');
     });
 
 
-    test('问题50 PDF 预览按页拆分显示每一页内容', async () => {
+    test('问题50 PDF 预览使用真实 PDF（不再用 HTML 近似分页）', async () => {
       await ev('__APP__.resetAllData()', true);
       await sleep(300);
       await ev(`(() => {
-        for (let i = 0; i < 8; i++){
-          __APP__.addEntry('work');
-          __APP__.setByPath('work.' + i + '.company', '公司' + (i + 1));
-          __APP__.setByPath('work.' + i + '.position', '高级前端工程师');
-          __APP__.setByPath('work.' + i + '.description', ['负责核心业务系统开发','优化性能提升 50%','带领 5 人小组完成交付','沉淀组件库与规范'].join(String.fromCharCode(10)));
-        }
-        __APP__.afterChange(); __APP__.renderPreview();
+        const fake = '%PDF-1.4 1 0 obj << /Type /Page >> endobj 2 0 obj << /Type /Page >> endobj 3 0 obj << /Type /Page >> endobj ';
+        window.desktopAPI = { isDesktop: true, previewPDF: function(){ return Promise.resolve({ ok: true, base64: btoa(fake) }); }, savePDF: function(){ return Promise.resolve({ ok: true }); } };
         return true;
       })()`);
-      await sleep(400);
       await goModule('export');
       await click('[data-action="export-pdf"]');
-      await sleep(600);
-      const v = await ev(`(() => {
-        const badge = document.getElementById('pdf-page-count').textContent;
-        const m = badge.match(/共 (\\d+) 页/);
-        const pages = m ? parseInt(m[1], 10) : 0;
-        const pageEls = Array.prototype.slice.call(document.querySelectorAll('#pdf-preview-sheet .pdf-page'));
-        const heights = pageEls.map(function(el){ return Math.round(el.getBoundingClientRect().height); });
-        const labels = Array.prototype.map.call(document.querySelectorAll('#pdf-preview-sheet .pdf-page-label'), function(el){ return el.textContent; });
-        return { badge: badge, pages: pages, pageCount: pageEls.length, heights: heights, labels: labels, breaks: document.querySelectorAll('#pdf-preview-sheet .pdf-break').length };
-      })()`);      if (!v || v.pages < 2) throw new Error('长简历预览页数应 >= 2: ' + JSON.stringify(v));
-      if (v.pageCount !== v.pages) throw new Error('页面卡片数应与页数一致: ' + JSON.stringify(v));
-      if (v.breaks !== 0) throw new Error('不应再有分页虚线: ' + JSON.stringify(v));
-      if (!v.heights.length || v.heights.some(function(h){ return Math.abs(h - 1122) > 4; })) throw new Error('每页高度应约为 A4（1122px）: ' + JSON.stringify(v.heights));
-      if (v.labels.length !== v.pages || v.labels[0].indexOf('第 1 页') < 0) throw new Error('页面标签异常: ' + JSON.stringify(v.labels));
+      await sleep(700);
+      const v = await ev(`(() => ({
+        count: document.getElementById('pdf-page-count').textContent,
+        htmlPages: document.querySelectorAll('#pdf-preview-sheet .pdf-page').length,
+        hasFrame: !!document.getElementById('pdf-preview-frame'),
+        frameVisible: !document.getElementById('pdf-preview-frame').classList.contains('hidden'),
+        statusHidden: document.getElementById('pdf-preview-status').classList.contains('hidden')
+      }))()`);
+      if (v.count !== '共 3 页') throw new Error('页数应从真实 PDF 解析: ' + JSON.stringify(v));
+      if (v.htmlPages !== 0) throw new Error('不应再使用 HTML 近似分页: ' + JSON.stringify(v));
+      if (!v.hasFrame || !v.frameVisible) throw new Error('未显示 PDF 内嵌预览: ' + JSON.stringify(v));
+      if (!v.statusHidden) throw new Error('加载完成后应隐藏加载提示: ' + JSON.stringify(v));
       await click('[data-action="pdf-preview-close"]');
       await sleep(200);
       const closed = await ev('document.getElementById("pdf-preview").classList.contains("hidden")');
       if (!closed) throw new Error('取消后预览页未关闭');
+      await ev('delete window.desktopAPI');
     });
 
     test('问题51 开放两栏：荣誉证书显示在左侧蓝色栏', async () => {
