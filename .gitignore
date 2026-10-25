@@ -1,4 +1,4 @@
-# 操作系统
+﻿# 操作系统
 Thumbs.db
 ehthumbs.db
 Desktop.ini
@@ -28,3 +28,4 @@ Desktop.ini
 node_modules/
 dist/
 build/
+release/

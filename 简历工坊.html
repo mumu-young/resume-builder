@@ -63,6 +63,17 @@
   <button type="button" class="btn btn-primary" data-action="rich-bold"><b>B</b> 加粗</button>
   <button type="button" class="btn" data-action="rich-unbold">取消加粗</button>
 </div>
+<div id="modal-mask" class="modal-mask hidden">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <h3 id="modal-title" class="modal-title"></h3>
+    <p id="modal-msg" class="modal-msg"></p>
+    <input id="modal-input" class="modal-input hidden" type="text">
+    <div class="modal-actions">
+      <button type="button" class="btn" data-action="modal-cancel">取消</button>
+      <button type="button" class="btn btn-primary" id="modal-ok" data-action="modal-ok">确定</button>
+    </div>
+  </div>
+</div>
 <div id="toast" class="toast"></div>
 
 <script src="js/utils.js"></script>

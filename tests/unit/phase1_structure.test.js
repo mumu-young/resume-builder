@@ -7,6 +7,7 @@ const { ROOT } = require('../lib/load-js');
 
 const indexHtml = fs.readFileSync(path.join(ROOT, '简历工坊.html'), 'utf8');
 const styleCss = fs.readFileSync(path.join(ROOT, 'css', 'style.css'), 'utf8');
+const appJs = fs.readFileSync(path.join(ROOT, 'js', 'app.js'), 'utf8');
 
 test('简历工坊.html 包含全部必需元素 id', () => {
   const ids = ['loading','app','resume-title','resume-select','wc-badge','save-status','btn-new','btn-dup','btn-rename','btn-del','btn-toggle-preview','btn-print','btn-settings','module-nav','editor','preview-pane','preview-scroll','resume-page','import-file','photo-file','toast'];
@@ -46,5 +47,13 @@ test('简历工坊.html 含加粗工具栏，打印时隐藏', () => {
   ok(indexHtml.includes('data-action="rich-bold"') && indexHtml.includes('data-action="rich-unbold"'), '缺少加粗/取消加粗按钮');
   ok(styleCss.includes('.rich-toolbar'), '缺少工具栏样式');
   matches(styleCss, /@media print[\s\S]*?\.rich-toolbar\s*\{\s*display\s*:\s*none/i, '打印时未隐藏工具栏');
+});
+test('应用内弹窗结构存在，且不再使用原生 prompt/confirm', () => {
+  ok(indexHtml.includes('id="modal-mask"'), '缺少应用内弹窗');
+  ok(indexHtml.includes('id="modal-input"'), '缺少弹窗输入框');
+  ok(indexHtml.includes('data-action="modal-ok"') && indexHtml.includes('data-action="modal-cancel"'), '缺少弹窗按钮');
+  ok(!/\bprompt\s*\(/.test(appJs), 'app.js 仍在使用 prompt()（Electron 不支持）');
+  ok(!/\bconfirm\s*\(/.test(appJs), 'app.js 仍在使用 confirm()（与桌面版交互冲突）');
+  ok(appJs.includes('exportPdf') && appJs.includes('desktopAPI'), '缺少桌面版 PDF 导出通道');
 });
 runAll();

@@ -945,6 +945,65 @@ const { test, runAll } = require('../lib/suite');
       if (html.indexOf('rf-b') >= 0) throw new Error('清除后预览仍显示加粗');
     });
 
+    test('问题47 重命名通过应用内弹窗完成（不依赖 prompt）', async () => {
+      await ev('__APP__.resetAllData()', true);
+      await sleep(300);
+      await click('#btn-rename');
+      await sleep(150);
+      const opened = await ev('!document.getElementById("modal-mask").classList.contains("hidden")');
+      if (!opened) throw new Error('点击重命名后未显示应用内弹窗');
+      const hasInput = await ev('!document.getElementById("modal-input").classList.contains("hidden")');
+      if (!hasInput) throw new Error('重命名弹窗缺少输入框');
+      await setInput('#modal-input', '秋招正式简历');
+      await click('[data-action="modal-ok"]');
+      await sleep(300);
+      const title = await ev('__APP__.getCurrent().title');
+      if (title !== '秋招正式简历') throw new Error('重命名未生效: ' + title);
+      const closed = await ev('document.getElementById("modal-mask").classList.contains("hidden")');
+      if (!closed) throw new Error('确定后弹窗未关闭');
+      const selectText = await ev('document.getElementById("resume-select").selectedOptions[0].textContent');
+      if (selectText !== '秋招正式简历') throw new Error('简历下拉未同步新名称: ' + selectText);
+    });
+
+    test('问题48 删除当前简历后仍可切换到其他简历（应用内确认弹窗）', async () => {
+      await ev('__APP__.resetAllData()', true);
+      await sleep(300);
+      await ev('__APP__.newResume()');
+      await sleep(250);
+      await ev('__APP__.newResume()');
+      await sleep(300);
+      const before = await ev('__APP__.state.resumes.length');
+      if (before !== 3) throw new Error('准备 3 份简历失败: ' + before);
+      await click('#btn-del');
+      await sleep(150);
+      const opened = await ev('!document.getElementById("modal-mask").classList.contains("hidden")');
+      if (!opened) throw new Error('点击删除后未显示确认弹窗');
+      await click('[data-action="modal-ok"]');
+      await sleep(400);
+      const after = await ev('__APP__.state.resumes.length');
+      if (after !== 2) throw new Error('删除后简历数量应为 2，实际 ' + after);
+      const opts = await ev('document.querySelectorAll("#resume-select option").length');
+      if (opts !== 2) throw new Error('删除后下拉选项应为 2，实际 ' + opts);
+      const switched = await ev('(() => { const s = document.getElementById("resume-select"); const t = Array.prototype.find.call(s.options, function(o){ return o.value !== s.value; }); if (!t) return null; s.value = t.value; s.dispatchEvent(new Event("change", {bubbles:true})); return { picked: t.textContent, current: __APP__.getCurrent().title }; })()');
+      if (!switched) throw new Error('删除后找不到可切换的简历');
+      await sleep(300);
+      const now = await ev('__APP__.getCurrent().title');
+      if (now !== switched.picked) throw new Error('删除后切换简历失败: ' + now + ' vs ' + switched.picked);
+    });
+
+    test('问题49 导出 PDF 走桌面接口（模拟验证）', async () => {
+      await ev('__APP__.resetAllData()', true);
+      await sleep(300);
+      await ev('__APP__.renameResume("张三简历")');
+      await goModule('export');
+      await ev(`(() => { window.__pdfCall = null; window.desktopAPI = { isDesktop: true, exportPDF: function(name){ window.__pdfCall = name; return Promise.resolve({ ok: true }); } }; return true; })()`);
+      await click('[data-action="export-pdf"]');
+      await sleep(300);
+      const called = await ev('window.__pdfCall');
+      if (called !== '张三简历.pdf') throw new Error('未按简历名调用桌面 PDF 导出: ' + called);
+      await ev('delete window.desktopAPI');
+    });
+
     await runAll();
   } finally {
     await b.close();

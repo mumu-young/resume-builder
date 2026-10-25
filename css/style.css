@@ -207,3 +207,16 @@ body.dark .rich-badge:hover{ background:#2b3d5c; }
 @media print{
   .rich-toolbar{ display:none !important; }
 }
+
+/* ===== 应用内弹窗（替代 prompt/confirm，兼容桌面版） ===== */
+.modal-mask{ position:fixed; inset:0; z-index:1200; background:rgba(15,23,42,.45); display:flex; align-items:center; justify-content:center; }
+.modal-mask.hidden{ display:none !important; }
+.modal-box{ width:min(430px, calc(100vw - 40px)); background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:20px 22px; box-shadow:0 20px 50px rgba(15,23,42,.28); }
+.modal-title{ margin:0 0 8px; font-size:16px; color:var(--text); }
+.modal-msg{ margin:0 0 14px; color:var(--muted); font-size:13px; line-height:1.65; white-space:pre-wrap; word-break:break-word; }
+.modal-msg.hidden{ display:none !important; }
+.modal-input{ width:100%; padding:9px 11px; margin-bottom:14px; border:1px solid var(--border); border-radius:8px; background:var(--panel); color:var(--text); font-size:14px; font-family:inherit; }
+.modal-input.hidden{ display:none !important; }
+.modal-input:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+.modal-actions{ display:flex; justify-content:flex-end; gap:8px; }
+@media print{ .modal-mask{ display:none !important; } }

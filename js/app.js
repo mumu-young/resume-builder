@@ -464,7 +464,7 @@
       field('新简历默认模板', selectEl('data-spath="defaultTemplate"', s.defaultTemplate, TEMPLATES.map(function(t){ return [t.id, t.name]; }))) +
       '</div></div>' +
       '<div class="tool-card"><h4>关于</h4>' +
-      '<p>简历工坊 v1.0 ｜ 纯本地运行：无登录、无联网、无云存储。数据仅保存在本机浏览器中。</p></div>';
+      '<p>简历工坊 v1.1.1 ｜ 纯本地运行：无登录、无联网、无云存储。数据仅保存在本机浏览器中。</p></div>';
   }
   function renderModule(){
     var el = $('#editor');
@@ -827,8 +827,17 @@
   function renameResume(name){
     var r = current();
     if (!r) return;
-    if (name === undefined){ name = prompt('给这份简历起个名字：', r.title); }
-    if (name === null) return;
+    if (name === undefined){
+      openModal({
+        title: '重命名简历',
+        message: '请输入新的简历名称：',
+        input: true,
+        value: r.title,
+        okText: '保存',
+        onOk: function(v){ renameResume(v); }
+      });
+      return;
+    }
     name = String(name).trim();
     if (!name) return;
     r.title = name;
@@ -839,7 +848,16 @@
   function deleteResume(force){
     var r = current();
     if (!r) return;
-    if (!force && !confirm('确定删除「' + r.title + '」吗？删除后不可恢复。')) return;
+    if (!force){
+      openModal({
+        title: '删除简历',
+        message: '确定删除「' + r.title + '」吗？删除后不可恢复。',
+        okText: '删除',
+        danger: true,
+        onOk: function(){ deleteResume(true); }
+      });
+      return;
+    }
     var idx = state.resumes.findIndex(function(x){ return x.id === r.id; });
     state.resumes.splice(idx, 1);
     if (!state.resumes.length){
@@ -913,6 +931,20 @@
     setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1500);
     showToast('备份已导出');
   }
+  function exportPdf(){
+    var r = current();
+    var name = ((r && r.title) || '简历') + '.pdf';
+    if (window.desktopAPI && typeof window.desktopAPI.exportPDF === 'function'){
+      window.desktopAPI.exportPDF(name).then(function(res){
+        if (res && res.ok) showToast('PDF 已导出');
+        else if (res && res.error) alert('导出 PDF 失败：' + res.error);
+      }).catch(function(err){
+        alert('导出 PDF 失败：' + (err && err.message ? err.message : err));
+      });
+      return;
+    }
+    window.print();
+  }
   function exportWord(){
     var r = current();
     if (!r) return;
@@ -982,8 +1014,15 @@
       }, 3000);
       return;
     }
-    if (!confirm('确定清空所有简历和设置吗？此操作不可恢复。')) return;
-    resetAllData().then(function(){ showToast('已清空，并新建了一份空白简历'); });
+    openModal({
+      title: '清空所有数据',
+      message: '确定清空所有简历和设置吗？此操作不可恢复。',
+      okText: '清空',
+      danger: true,
+      onOk: function(){
+        resetAllData().then(function(){ showToast('已清空，并新建了一份空白简历'); });
+      }
+    });
   }  /* ============ 小工具 ============ */
   function starGen(){
     var s = $('#star-s').value.trim(), t = $('#star-t').value.trim(), a = $('#star-a').value.trim(), r = $('#star-r').value.trim();
@@ -1062,6 +1101,21 @@
   function togglePreview(){
     state.previewVisible = !state.previewVisible;
     $('#preview-pane').style.display = state.previewVisible ? '' : 'none';
+    var modalMask = $('#modal-mask');
+    if (modalMask){
+      modalMask.addEventListener('mousedown', function(e){ if (e.target === modalMask) closeModal(); });
+      var modalInput = $('#modal-input');
+      if (modalInput){
+        modalInput.addEventListener('keydown', function(e){
+          if (e.key === 'Enter'){ e.preventDefault(); submitModal(); }
+          else if (e.key === 'Escape'){ e.preventDefault(); closeModal(); }
+        });
+      }
+    }
+    document.addEventListener('keydown', function(e){
+      var mm = $('#modal-mask');
+      if (e.key === 'Escape' && mm && !mm.classList.contains('hidden')) closeModal();
+    });
     var sw = $('#preview-switch');
     if (sw) sw.checked = state.previewVisible;
     var b = $('#btn-toggle-preview');
@@ -1143,7 +1197,7 @@
       case 'set-line-color': setSectionColor('lineColor', btn.getAttribute('data-color')); break;
       case 'set-line-width': setLineWidth(parseInt(btn.getAttribute('data-width'), 10) || 2); break;
       case 'reset-section-style': resetSectionStyle(); break;
-      case 'export-pdf': window.print(); break;
+      case 'export-pdf': exportPdf(); break;
       case 'export-word': exportWord(); break;
       case 'export-backup': exportBackup(); break;
       case 'pick-import': $('#import-file').click(); break;
@@ -1154,6 +1208,8 @@
       case 'star-gen': starGen(); break;
       case 'star-copy': starCopy(); break;
       case 'star-insert': starInsert(); break;
+      case 'modal-ok': submitModal(); break;
+      case 'modal-cancel': closeModal(); break;
       case 'rich-bold': applyRichBold('add'); break;
       case 'rich-unbold': applyRichBold('remove'); break;
       case 'clear-field-bold': clearFieldBold(btn.getAttribute('data-field')); break;
@@ -1186,6 +1242,42 @@
       showToast('照片已添加（仅保存在本地）');
     }).catch(function(){ alert('图片读取失败'); });
     e.target.value = '';
+  }
+  /* ============ 应用内弹窗（替代 prompt/confirm，兼容桌面版） ============ */
+  var modalState = { onOk: null };
+  function openModal(opts){
+    opts = opts || {};
+    var mask = $('#modal-mask');
+    if (!mask) return;
+    modalState.onOk = typeof opts.onOk === 'function' ? opts.onOk : null;
+    $('#modal-title').textContent = opts.title || '';
+    var msg = $('#modal-msg');
+    msg.textContent = opts.message || '';
+    msg.classList.toggle('hidden', !opts.message);
+    var input = $('#modal-input');
+    input.value = opts.value == null ? '' : String(opts.value);
+    input.classList.toggle('hidden', !opts.input);
+    var ok = $('#modal-ok');
+    ok.textContent = opts.okText || '确定';
+    ok.classList.toggle('btn-danger', !!opts.danger);
+    ok.classList.toggle('btn-primary', !opts.danger);
+    mask.classList.remove('hidden');
+    setTimeout(function(){
+      if (opts.input){ input.focus(); input.select(); } else { ok.focus(); }
+    }, 30);
+  }
+  function closeModal(){
+    var mask = $('#modal-mask');
+    if (mask) mask.classList.add('hidden');
+    modalState.onOk = null;
+  }
+  function submitModal(){
+    var fn = modalState.onOk;
+    var input = $('#modal-input');
+    var hasInput = !!input && !input.classList.contains('hidden');
+    var value = hasInput ? input.value : undefined;
+    closeModal();
+    if (fn) fn(value);
   }
   function showToast(msg){
     var el = $('#toast');
@@ -1226,6 +1318,21 @@
     });
     var pscroll = $('#preview-scroll');
     if (pscroll) pscroll.addEventListener('scroll', hideRichToolbar);
+    var modalMask = $('#modal-mask');
+    if (modalMask){
+      modalMask.addEventListener('mousedown', function(e){ if (e.target === modalMask) closeModal(); });
+      var modalInput = $('#modal-input');
+      if (modalInput){
+        modalInput.addEventListener('keydown', function(e){
+          if (e.key === 'Enter'){ e.preventDefault(); submitModal(); }
+          else if (e.key === 'Escape'){ e.preventDefault(); closeModal(); }
+        });
+      }
+    }
+    document.addEventListener('keydown', function(e){
+      var mm = $('#modal-mask');
+      if (e.key === 'Escape' && mm && !mm.classList.contains('hidden')) closeModal();
+    });
     var sw = $('#preview-switch');
     if (sw) sw.addEventListener('change', function(){ togglePreview(); });
     $('#import-file').addEventListener('change', onImportFile);
@@ -1273,6 +1380,10 @@
     importPayload: importPayload,
     resetAllData: resetAllData,
     flushSave: flushSave,
+    exportPdf: exportPdf,
+    openModal: openModal,
+    closeModal: closeModal,
+    submitModal: submitModal,
     normalizeRanges: normalizeRanges,
     subtractRange: subtractRange,
     rich: {
