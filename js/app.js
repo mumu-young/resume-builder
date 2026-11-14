@@ -7,6 +7,7 @@
 
   var MODULES = [
     { id: 'basic', icon: '👤', name: '基础信息' },
+    { id: 'smart', icon: '✨', name: '智能粘贴导入' },
     { id: 'education', icon: '🎓', name: '教育经历' },
     { id: 'work', icon: '💼', name: '实习/工作经历' },
     { id: 'projects', icon: '🚀', name: '项目经验' },
@@ -24,7 +25,8 @@
 
   var state = {
     resumes: [], currentId: null, settings: null, module: 'basic',
-    activeEntry: null, previewVisible: true, lastSavedAt: null, dirty: false, ready: false, pendingRanges: null
+    activeEntry: null, previewVisible: true, lastSavedAt: null, dirty: false, ready: false, pendingRanges: null,
+    smart: { text: '', result: null, asNew: true, undo: null, notice: '' }
   };
 
   function current(){
@@ -466,6 +468,275 @@
       '<div class="tool-card"><h4>关于</h4>' +
       '<p>简历工坊 v1.1.2 ｜ 纯本地运行：无登录、无联网、无云存储。数据仅保存在本机浏览器中。</p></div>';
   }
+
+  /* ============ 智能粘贴导入 ============ */
+  var SMART_PLACEHOLDER = '把整段简历文字粘贴到这里，例如：\n\n张三\n男 | 25岁 | 13800000000 | zhangsan@example.com | 深圳\n求职意向：前端开发工程师\n\n教育经历\n复旦大学  计算机科学与技术  本科  2018.09 - 2022.06\nGPA 3.8/4.0，主修课程：数据结构、操作系统\n\n工作经历\n字节跳动  高级前端工程师  2021.07 - 2024.12\n· 负责中台系统前端架构设计与开发\n\n专业技能\n编程语言：JavaScript、TypeScript';
+
+  var SMART_SAMPLE = [
+    '张伟',
+    '男 | 25岁 | 13800001234 | zhangwei@example.com | 深圳',
+    '求职意向：前端开发工程师',
+    '工作年限：3年',
+    '',
+    '教育经历',
+    '复旦大学  计算机科学与技术  本科  2018.09 - 2022.06',
+    'GPA 3.8/4.0，专业排名前10%',
+    '主修课程：数据结构、操作系统、计算机网络',
+    '',
+    '工作经历',
+    '字节跳动  高级前端工程师  2021.07 - 2024.12',
+    '· 负责中台系统前端架构设计与开发',
+    '· 主导性能优化，首屏加载从 3s 降到 1.2s',
+    '',
+    '项目经验',
+    '校园二手交易平台 | 后端开发 | Vue3 / Node.js / MySQL | 2022.03 - 2022.09',
+    '- 使用 Redis 缓存热点数据，接口 QPS 提升 3 倍',
+    '- https://github.com/zhangwei/second-hand',
+    '',
+    '专业技能',
+    '编程语言：JavaScript、TypeScript、Java',
+    '框架：Vue、React',
+    '工具：Git、Docker',
+    '',
+    '荣誉证书',
+    '国家奖学金（2022）',
+    'CET-6',
+    '',
+    '自我评价',
+    '3 年前端经验，熟悉工程化与性能优化，能独立负责中后台系统从 0 到 1 的搭建。'
+  ].join('\n');
+
+  function smartDate(v){ return v ? String(v).replace('-', '.') : ''; }
+  function smartRange(s, e){
+    var a = smartDate(s), b = smartDate(e);
+    if (a && b) return a + ' - ' + b;
+    if (a) return a + ' - 至今';
+    return b || '';
+  }
+  function smartLines(text, max){
+    var arr = String(text || '').split(/\n/).filter(function(s){ return String(s).trim(); });
+    if (max && arr.length > max) return arr.slice(0, max).concat(['…']);
+    return arr;
+  }
+  function smartItemHTML(title, sub, date, desc){
+    var lines = smartLines(desc, 4);
+    return '<div class="smart-item">' +
+      '<div class="smart-item-head"><span class="smart-item-title">' + esc(title || '（未识别，请手动补充）') + '</span>' +
+      (date ? '<span class="smart-item-date">' + esc(date) + '</span>' : '') + '</div>' +
+      (sub ? '<div class="smart-item-sub">' + esc(sub) + '</div>' : '') +
+      (lines.length ? '<ul class="smart-item-desc">' + lines.map(function(l){ return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>' : '') +
+      '</div>';
+  }
+  function smartSectionHTML(title, count, inner){
+    return '<div class="smart-sec"><div class="smart-sec-head"><span>' + title + '</span>' +
+      '<span class="smart-count">' + esc(count) + '</span></div>' + inner + '</div>';
+  }
+  function smartBasicHTML(b){
+    var rows = [['姓名', b.name], ['电话', b.phone], ['邮箱', b.email], ['所在地', b.location],
+      ['求职意向', b.target], ['工作年限', b.years], ['年龄', b.age]];
+    var filled = 0, html = '';
+    rows.forEach(function(r){
+      if (r[1]) filled++;
+      html += '<div class="smart-kv' + (r[1] ? '' : ' empty') + '">' +
+        '<span class="smart-k">' + r[0] + '</span><span class="smart-v">' + esc(r[1] || '未识别') + '</span></div>';
+    });
+    return { html: html, filled: filled };
+  }
+  function smartReviewHTML(res){
+    var d = res.data, st = res.stats;
+    var b = smartBasicHTML(d.basic);
+    var chips = [];
+    if (st.basic) chips.push('基础信息 ' + st.basic);
+    if (st.education) chips.push('教育 ' + st.education);
+    if (st.work) chips.push('工作 ' + st.work);
+    if (st.projects) chips.push('项目 ' + st.projects);
+    if (st.skills) chips.push('技能 ' + st.skills);
+    if (st.honors) chips.push('荣誉 ' + st.honors);
+    if (st.profile) chips.push('简介 1');
+
+    var html = '';
+    if (state.smart.undo){
+      html += '<div class="smart-notice">✅ 已填入简历（' + esc(state.smart.undo.title || '') + '），可继续微调，或 ' +
+        '<button class="btn btn-mini" data-action="smart-undo">撤销本次导入</button></div>';
+    }
+    html += '<div class="tool-card"><h4>② 核对识别结果 <span class="smart-total">共 ' + st.total + ' 项</span></h4>' +
+      '<div class="smart-chips">' + chips.map(function(c){ return '<span class="smart-chip">' + esc(c) + '</span>'; }).join('') + '</div>' +
+      '<div class="smart-grid">';
+
+    html += smartSectionHTML('👤 基础信息', b.filled + '/7', '<div class="smart-kv-list">' + b.html + '</div>');
+
+    if (d.education.length){
+      html += smartSectionHTML('🎓 教育经历', d.education.length, d.education.map(function(e){
+        return smartItemHTML(e.school || e.major, [e.degree, e.major, e.gpa ? 'GPA ' + e.gpa : '', e.rank ? '排名 ' + e.rank : ''].filter(Boolean).join(' · '),
+          smartRange(e.start, e.end), e.courses ? '课程：' + String(e.courses).replace(/\n/g, '、') + (e.description ? '\n' + e.description : '') : e.description);
+      }).join(''));
+    }
+    if (d.work.length){
+      html += smartSectionHTML('💼 实习/工作经历', d.work.length, d.work.map(function(w){
+        return smartItemHTML(w.company, w.position, smartRange(w.start, w.end), w.description);
+      }).join(''));
+    }
+    if (d.projects.length){
+      html += smartSectionHTML('🚀 项目经验', d.projects.length, d.projects.map(function(p){
+        return smartItemHTML(p.name, [p.role, p.tech ? '技术栈：' + p.tech : '', p.link].filter(Boolean).join(' · '),
+          smartRange(p.start, p.end), p.description);
+      }).join(''));
+    }
+    if (d.skills.length){
+      html += smartSectionHTML('🛠️ 专业技能', d.skills.length, d.skills.map(function(k){
+        return smartItemHTML(k.category || '技能', String(k.items || '').replace(/\n/g, '、'), '', '');
+      }).join(''));
+    }
+    if (d.honors.items.length || d.honors.extra){
+      var honorInner = d.honors.items.map(function(h){
+        return smartItemHTML(h.title, h.year, '', h.description);
+      }).join('');
+      if (d.honors.extra) honorInner += smartItemHTML('其他信息', d.honors.extra, '', '');
+      html += smartSectionHTML('🏅 荣誉证书 & 附加信息', d.honors.items.length + (d.honors.extra ? 1 : 0), honorInner);
+    }
+    if (d.profile){
+      html += smartSectionHTML('📝 个人简介 / 自我评价', '1', smartItemHTML('识别到的简介', '', '', d.profile));
+    }
+    html += '</div>';
+
+    if (res.warnings.length){
+      html += '<div class="smart-warn"><b>⚠️ 识别提示</b><ul>' +
+        res.warnings.map(function(w){ return '<li>' + esc(w) + '</li>'; }).join('') + '</ul></div>';
+    }
+    html += '</div>';
+
+    html += '<div class="tool-card smart-actions"><h4>③ 填入并导出</h4>' +
+      '<label class="chk"><input type="checkbox" data-smart="asnew"' + (state.smart.asNew ? ' checked' : '') + '> 填入为新的一份简历（不覆盖当前简历）</label>' +
+      '<div class="btn-row">' +
+      '<button class="btn btn-primary" data-action="smart-apply" data-kind="fill">✅ 填入简历</button>' +
+      '<button class="btn" data-action="smart-apply" data-kind="word">📄 填入并导出 Word</button>' +
+      '<button class="btn" data-action="smart-apply" data-kind="pdf">🖨️ 填入并导出 PDF</button>' +
+      '</div>' +
+      '<p class="muted">只覆盖识别到的模块，未识别的模块保持原样；填入后可到左侧各模块继续微调，也能一键撤销。</p></div>';
+    return html;
+  }
+  function renderSmartModule(){
+    var sm = state.smart;
+    var html = '<div class="module-head"><div><h3>✨ 智能粘贴导入</h3>' +
+      '<p class="module-desc">把整段简历文字粘进来（招聘网站、聊天记录、Word / PDF 里复制的都行），自动识别姓名、联系方式、教育、工作、项目、技能与荣誉，核对后一键填入并导出。</p></div></div>';
+    html += '<div class="tool-card"><h4>① 粘贴整段文字</h4>' +
+      '<textarea id="smart-input" class="smart-input" data-smart="input" rows="10" placeholder="' + esc(SMART_PLACEHOLDER) + '">' + esc(sm.text) + '</textarea>' +
+      '<div class="smart-bar"><span class="muted" id="smart-count">' + esc(String(sm.text || '').replace(/\s/g, '').length) + ' 字</span>' +
+      '<span class="smart-bar-spacer"></span>' +
+      '<button class="btn btn-mini" data-action="smart-sample">填入示例</button>' +
+      '<button class="btn btn-mini" data-action="smart-clear">清空</button>' +
+      '<button class="btn btn-primary" data-action="smart-parse">✨ 智能解析</button></div>' +
+      '<p class="muted">解析全部在本机完成：不联网、不上传，粘贴的原文也不会写进简历数据。</p></div>';
+    if (sm.result) html += smartReviewHTML(sm.result);
+    return html;
+  }
+
+  /* 把解析结果合并进简历数据：只覆盖识别到的模块 */
+  function applyParsedTo(d, p){
+    ['name', 'phone', 'email', 'location', 'target', 'years', 'age'].forEach(function(k){
+      if (p.basic && p.basic[k]) d.basic[k] = p.basic[k];
+    });
+    ['education', 'work', 'projects', 'skills'].forEach(function(k){
+      if (!p[k] || !p[k].length) return;
+      d[k] = p[k].map(function(item){
+        var o = {};
+        Object.keys(item).forEach(function(kk){ o[kk] = item[kk]; });
+        o.id = uid();
+        return o;
+      });
+    });
+    if (p.honors){
+      if (p.honors.items && p.honors.items.length){
+        d.honors.items = p.honors.items.map(function(h){
+          return { id: uid(), title: h.title, year: h.year, description: h.description };
+        });
+      }
+      if (p.honors.extra) d.honors.extra = p.honors.extra;
+    }
+    if (p.profile) d.profile = p.profile;
+  }
+
+  function smartParse(opts){
+    opts = opts || {};
+    var ta = $('#smart-input');
+    var text = ta ? ta.value : state.smart.text;
+    state.smart.text = text;
+    if (!String(text || '').trim()){ showToast('请先粘贴简历文字'); if (ta) ta.focus(); return; }
+    var res;
+    try {
+      res = ResumeParser.parse(text);
+    } catch (err){
+      alert('解析失败：' + err.message);
+      return;
+    }
+    state.smart.result = res;
+    state.smart.undo = null;
+    renderModule();
+    if (opts.scroll !== false){
+      var el = $('#editor');
+      if (el) el.scrollTop = 0;
+    }
+    showToast(res.stats.total ? '已识别 ' + res.stats.total + ' 项信息，请核对后填入' : '未识别到可用信息，请检查文字格式');
+  }
+  function smartApply(kind){
+    var res = state.smart.result;
+    if (!res) return;
+    flushSave();                       // 切换/覆盖前先把当前简历落盘
+    var asNew = state.smart.asNew;
+    var prevId = state.currentId;
+    var snapshot = null, created = null;
+    if (asNew){
+      var title = (res.data.basic.name ? res.data.basic.name + '的简历' : '导入的简历');
+      created = newResume(title);
+      state.resumes.push(created);
+      state.currentId = created.id;
+    } else {
+      var cur = current();
+      if (!cur) return;
+      snapshot = JSON.stringify(cur.data);
+    }
+    var r = current();
+    if (!r) return;
+    applyParsedTo(r.data, res.data);
+    r.updatedAt = Date.now();
+    state.smart.undo = { resumeId: r.id, title: r.title, asNew: asNew, prevId: prevId, data: snapshot };
+    state.activeEntry = null;
+    state.dirty = true;
+    state.settings.lastResumeId = state.currentId;
+    flushSave();
+    saveSettingsSoon();
+    renderAll();
+    showToast('已填入 ' + res.stats.total + ' 项数据');
+    if (kind === 'word') setTimeout(exportWord, 150);
+    else if (kind === 'pdf') setTimeout(function(){ window.print(); }, 200);
+  }
+  function smartUndo(){
+    var u = state.smart.undo;
+    if (!u) return;
+    flushSave();
+    if (u.asNew){
+      var idx = state.resumes.findIndex(function(x){ return x.id === u.resumeId; });
+      if (idx >= 0) state.resumes.splice(idx, 1);
+      Storage.deleteResume(u.resumeId);
+    } else {
+      var r = state.resumes.find(function(x){ return x.id === u.resumeId; });
+      if (r && u.data) r.data = JSON.parse(u.data);
+    }
+    if (!state.resumes.length){
+      var n = newResume('我的第一份简历');
+      state.resumes.push(n);
+      Storage.saveResume(n);
+    }
+    state.currentId = (u.prevId && state.resumes.some(function(x){ return x.id === u.prevId; }))
+      ? u.prevId : state.resumes[0].id;
+    state.settings.lastResumeId = state.currentId;
+    state.smart.undo = null;
+    state.dirty = true;
+    flushSave();
+    saveSettingsSoon();
+    renderAll();
+    showToast('已撤销本次导入');
+  }
   function renderModule(){
     var el = $('#editor');
     var r = current();
@@ -473,6 +744,7 @@
     var html = '';
     switch (state.module){
       case 'basic': html = renderBasicEditor(); break;
+      case 'smart': html = renderSmartModule(); break;
       case 'education': html = renderListEditor('education'); break;
       case 'work': html = renderListEditor('work'); break;
       case 'projects': html = renderListEditor('projects'); break;
@@ -1192,6 +1464,16 @@
   function onEditorInput(e){
     var el = e.target;
     if (!el || !el.dataset) return;
+    if (el.dataset.smart === 'input'){
+      state.smart.text = el.value;
+      var c = $('#smart-count');
+      if (c) c.textContent = String(el.value || '').replace(/\s/g, '').length + ' 字';
+      return;
+    }
+    if (el.dataset.smart === 'asnew'){
+      state.smart.asNew = !!el.checked;
+      return;
+    }
     if (el.dataset.spath){
       var val = el.value;
       if (el.dataset.spath === 'fontSize') val = parseInt(val, 10) || 14;
@@ -1281,6 +1563,22 @@
       case 'rich-bold': applyRichBold('add'); break;
       case 'rich-unbold': applyRichBold('remove'); break;
       case 'clear-field-bold': clearFieldBold(btn.getAttribute('data-field')); break;
+      case 'smart-parse': smartParse(); break;
+      case 'smart-apply': smartApply(btn.getAttribute('data-kind') || 'fill'); break;
+      case 'smart-undo': smartUndo(); break;
+      case 'smart-sample':
+        state.smart.text = SMART_SAMPLE;
+        state.smart.result = null;
+        state.smart.undo = null;
+        renderModule();
+        showToast('已填入示例文字，点「智能解析」试试');
+        break;
+      case 'smart-clear':
+        state.smart.text = '';
+        state.smart.result = null;
+        state.smart.undo = null;
+        renderModule();
+        break;
     }
   }
   function onImportFile(e){
@@ -1364,6 +1662,17 @@
     var ed = $('#editor');
     ed.addEventListener('input', onEditorInput);
     ed.addEventListener('change', onEditorInput);
+    // 粘贴后自动解析，省掉一次点击
+    ed.addEventListener('paste', function(e){
+      var t = e.target;
+      if (!t || t.id !== 'smart-input') return;
+      setTimeout(function(){
+        if (!t.isConnected) return;
+        state.smart.text = t.value;
+        if (String(t.value || '').trim().length < 10) return;
+        smartParse({ scroll: false });
+      }, 60);
+    });
     ed.addEventListener('focusin', function(e){
       var card = e.target.closest ? e.target.closest('.entry-card') : null;
       if (card && (card.dataset.entryType === 'work' || card.dataset.entryType === 'projects')){
@@ -1465,6 +1774,15 @@
       clearField: clearFieldBold,
       hide: hideRichToolbar,
       mark: markBoldFields
+    },
+    smartParse: smartParse,
+    smartApply: smartApply,
+    smartUndo: smartUndo,
+    applyParsedTo: applyParsedTo,
+    parseText: function(text){ return ResumeParser.parse(text); },
+    setSmartText: function(text){
+      state.smart.text = text;
+      if (state.module === 'smart') renderModule();
     },
     setSettings: function(path, val){
       setSettingsByPath(path, val);
